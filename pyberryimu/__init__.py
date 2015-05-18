@@ -16,7 +16,7 @@ long_description = \
     """
     """
 url = 'https://github.com/hbldh/pyberryimu'
-download_url = 'https://bitbucket.org/hbldh/nmmlib/downloads'
+download_url = 'https://github.com/hbldh/pyberryimu/downloads'
 platforms = ['Linux']
 keywords = []
 classifiers = [

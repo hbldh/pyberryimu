@@ -10,8 +10,9 @@
 
 """
 
-# General adress
+# General address
 ADDRESS = 0x77
+
 # Registers
 CALIB_DATA_REG = 0xAA
 CHIP_ID_REG = 0xD0
