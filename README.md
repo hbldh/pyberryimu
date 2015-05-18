@@ -26,15 +26,18 @@ This library uses [smbus-cffi](https://github.com/bivab/smbus-cffi) for communic
 To talk to the BerryIMU, a client should be created. It can be created with the `with` command or instantiated 
 and opened in a regular fashion.
 
-    from pyberryimu.client import BerryIMUClient
-    with BerryIMUClient(bus=1) as bimuc:
-        acc = bimuc.read_accelerometers()
-        gyro = bimuc.read_gyroscopes()
-        mag = bimuc.read_magnetometer()
-        pr = bimuc.read_pressure()
-        temp = bimuc.read_temperature()
-     print acc, gyro, mag, pr, temp
-    
+```python
+from pyberryimu.client import BerryIMUClient
+
+with BerryIMUClient(bus=1) as bimuc:
+    acc = bimuc.read_accelerometers()
+    gyro = bimuc.read_gyroscopes()
+    mag = bimuc.read_magnetometer()
+    pr = bimuc.read_pressure()
+    temp = bimuc.read_temperature()
+print acc, gyro, mag, pr, temp
+```
+
 ## Documentation
 
 Build Sphinx documentation with command
