@@ -30,8 +30,8 @@ and opened in a regular fashion.
 from pyberryimu.client import BerryIMUClient
 
 with BerryIMUClient(bus=1) as bimuc:
-    acc = bimuc.read_accelerometers()
-    gyro = bimuc.read_gyroscopes()
+    acc = bimuc.read_accelerometer()
+    gyro = bimuc.read_gyroscope()
     mag = bimuc.read_magnetometer()
     pr = bimuc.read_pressure()
     temp = bimuc.read_temperature()
@@ -40,11 +40,7 @@ print acc, gyro, mag, pr, temp
 
 ## Documentation
 
-Build Sphinx documentation with command
-
-   make html
-
-run from the 
+TBD
 
 ### BerryIMU links
 * [Buy BerryIMU](http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/)
