@@ -57,7 +57,7 @@ def calibrate_accelerometer(client, save_to_file=True):
                 axes_names[index], 'downwards' if side < 0 else 'upwards'))
             _wait_for_compliance()
 
-            input('Correct orientation. Start calibration of BerryIMU {0} axis {1} ({2}) by pressing Enter.'.format(
+            raw_input('Correct orientation. Start calibration of BerryIMU {0} axis {1} ({2}) by pressing Enter.'.format(
                 axes_names[index], 'downwards' if side < 0 else 'upwards', client.read_accelerometer()))
             acc_values = []
             t = time.time()
