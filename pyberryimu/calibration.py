@@ -19,11 +19,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import os
 import time
 import math
 
 
-def calibrate_accelerometer(client):
+def calibrate_accelerometer(client, save_to_file=True):
     """Perform rudimentary sensitivity and zero-G offset calibration
 
     :param client: The BerryIMU client to calibrate with.
@@ -49,6 +50,7 @@ def calibrate_accelerometer(client):
                 keep_waiting = 10
             time.sleep(0.1)
 
+
     axes_names = ['x', 'y', 'z']
     for index in xrange(3):
         for side in [-1, 1]:
@@ -56,8 +58,8 @@ def calibrate_accelerometer(client):
                 axes_names[index], 'downwards' if side < 0 else 'upwards'))
             _wait_for_compliance()
 
-            print('Staring calibration of BerryIMU {0} axis {1}...'.format(
-                axes_names[index], 'downwards' if side < 0 else 'upwards'))
+            print('Staring calibration of BerryIMU {0} axis {1} ({2})...'.format(
+                axes_names[index], 'downwards' if side < 0 else 'upwards'), client.read_accelerometer())
             acc_values = []
             t = time.time()
             while (time.time() - t) < 3:
@@ -67,6 +69,18 @@ def calibrate_accelerometer(client):
         output[axes_names[index]]['sensitivity'] = sum(output[axes_names[index]]['values']) / 2
         output[axes_names[index]]['scale'] = 2 / sum(map(math.fabs, output[axes_names[index]]['values']))
         output[axes_names[index]]['zero'] = sum(output[axes_names[index]]['values'])
+
+    if save_to_file:
+        try:
+            print("Writing accelerometer calibration data to file...")
+            import json
+            with open(os.path.expanduser('~/.pyberryimu_acc'), 'w') as f:
+                json.dump(output, f, indent=2)
+        except:
+            print("Failed to write to file!")
+
+    print("Accelerometer calibration done.")
+
     return output
 
 
