@@ -59,7 +59,7 @@ def calibrate_accelerometer(client, save_to_file=True):
             _wait_for_compliance()
 
             print('Staring calibration of BerryIMU {0} axis {1} ({2})...'.format(
-                axes_names[index], 'downwards' if side < 0 else 'upwards'), client.read_accelerometer())
+                axes_names[index], 'downwards' if side < 0 else 'upwards', client.read_accelerometer()))
             acc_values = []
             t = time.time()
             while (time.time() - t) < 3:
