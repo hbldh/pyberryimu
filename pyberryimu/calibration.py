@@ -33,9 +33,9 @@ def calibrate_accelerometer(client, save_to_file=True):
     :rtype: dict
 
     """
-    output = {'x': {'values': [], 'sensitivity': None, 'scale': None, 'zero': None},
-              'y': {'values': [], 'sensitivity': None, 'scale': None, 'zero': None},
-              'z': {'values': [], 'sensitivity': None, 'scale': None, 'zero': None}}
+    output = {'x': {'values': [], 'sensitivity': None, 'zero': None},
+              'y': {'values': [], 'sensitivity': None, 'zero': None},
+              'z': {'values': [], 'sensitivity': None, 'zero': None}}
 
     def _wait_for_compliance():
         keep_waiting = 10
@@ -50,7 +50,6 @@ def calibrate_accelerometer(client, save_to_file=True):
                 keep_waiting = 10
             time.sleep(0.1)
 
-
     axes_names = ['x', 'y', 'z']
     for index in xrange(3):
         for side in [-1, 1]:
@@ -58,16 +57,16 @@ def calibrate_accelerometer(client, save_to_file=True):
                 axes_names[index], 'downwards' if side < 0 else 'upwards'))
             _wait_for_compliance()
 
-            print('Staring calibration of BerryIMU {0} axis {1} ({2})...'.format(
+            input('Correct orientation. Start calibration of BerryIMU {0} axis {1} ({2}) by pressing Enter.'.format(
                 axes_names[index], 'downwards' if side < 0 else 'upwards', client.read_accelerometer()))
             acc_values = []
             t = time.time()
-            while (time.time() - t) < 3:
+            while (time.time() - t) < 5:
                 acc_values.append(client.read_accelerometer()[index])
             output[axes_names[index]]['values'].append(sum(acc_values) / len(acc_values))
 
-        output[axes_names[index]]['sensitivity'] = sum(output[axes_names[index]]['values']) / 2
-        output[axes_names[index]]['scale'] = 2 / sum(map(math.fabs, output[axes_names[index]]['values']))
+        v_max, v_min = max(output[axes_names[index]]['values']), min(output[axes_names[index]]['values'])
+        output[axes_names[index]]['sensitivity'] = (v_max - v_min) / 2
         output[axes_names[index]]['zero'] = sum(output[axes_names[index]]['values'])
 
     if save_to_file:
