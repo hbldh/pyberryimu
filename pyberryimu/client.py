@@ -192,7 +192,7 @@ class BerryIMUClient(object):
         )
         self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, int(reg1_value, 2))
 
-        # TODO: Add setup for high-pass filter, LSM9DS0.CTRL_REG2_G and LSM9DS0.CTRL_REG2_5
+        # TODO: Add setup for high-pass filter, LSM9DS0.CTRL_REG2_G and LSM9DS0.CTRL_REG5_G
 
         reg4_value = (
             ('0' if self._gyro_setup.get('continuous_update', False) else '1') +
@@ -203,13 +203,6 @@ class BerryIMUClient(object):
             '0'  # SPI Serial Interface Mode selection
         )
         self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, int(reg4_value,2))
-
-        # # Conversion constants for this setting [deg/s/LSB]
-        # # TODO: Wrap G_GAIN in automatic calculation of value.
-        # self.__G_GAIN = 0.070
-        # # TODO: Study Loop period dependency.
-        # # Loop period = 41ms.   This needs to match the time it takes each loop to run
-        # self.__LP = 0.041
 
     def _init_magnetometer(self):
         """Initialize the magnetometer according to the settings document sent in."""
@@ -225,7 +218,7 @@ class BerryIMUClient(object):
 
         reg6_value = (
             '0' +  # Unused bits
-            LSM9DS0.get_magnetometer_full_scale_bits(self._mag_setup.get('full_scale', 2000)) +
+            LSM9DS0.get_magnetometer_full_scale_bits(self._mag_setup.get('full_scale', 12)) +
             '00000'  # Unused bits
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM, int(reg6_value, 2))
@@ -244,6 +237,23 @@ class BerryIMUClient(object):
         self._set_bmp180_calibration_values()
         # TODO: Better init handling!
         self.__OVERSAMPLING = 3  # 0..3
+
+    def get_settings(self):
+        return {
+            'accelerometer': {
+                'reg1': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM)),
+                'reg2': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM))
+            },
+            'gyroscope': {
+                'reg1': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G)),
+                'reg4': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G)),
+            },
+            'magnetometer': {
+                'reg5': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM)),
+                'reg6': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM)),
+                'reg7': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM)),
+            }
+        }
 
     # BMP180 specific methods.
 
@@ -294,13 +304,14 @@ class BerryIMUClient(object):
 
     @property
     def timestamp(self):
-        """Timestamp right now in UTC Epoch time.
+        """Timestamp right now Epoch time.
 
-        :return: UTC Epoch timestamp
+        :return: Epoch timestamp
         :rtype: float
 
         """
-        return time.mktime(datetime.datetime.utcnow().timetuple())
+        # TODO: Make timezone independent...
+        return time.time()
 
     def read_accelerometer(self):
         """Method for reading values from the accelerometer.
