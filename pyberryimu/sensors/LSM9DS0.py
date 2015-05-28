@@ -7,6 +7,9 @@
 .. module:: LSM9DS0
    :platform: Unix
    :synopsis: Address for communicating with the LSM9DS0 sensor.
+              See `LSM9DS0 data sheet
+              <http://ozzmaker.com/wp-content/uploads/2014/12/LSM9DS0.pdf>`_
+              for more details.
 
 """
 
@@ -97,3 +100,144 @@ TIME_LIMIT = 0x3B
 TIME_LATENCY = 0x3C
 TIME_WINDOW = 0x3D
 
+# Accelerometer settings
+
+# Accelerometer data refresh rates
+_TABLE_72 = {
+    0: '0000',
+    3.125: '0001',
+    6.25: '0010',
+    12.5: '0011',
+    25: '0100',
+    50: '0100',
+    100: '0110',
+    200: '0111',
+    400: '1000',
+    800: '1001',
+    1600: '1010',
+}
+
+# Accelerometer anti-alias filter bandwidth
+_TABLE_75 = {
+    773: '00',
+    194: '01',
+    362: '10',
+    50: '11',
+}
+
+# Accelerometer full-scale selection
+_TABLE_76 = {
+    2: '000',
+    4: '001',
+    6: '010',
+    8: '011',
+    16: '100',
+}
+
+# Accelerometer self-test mode
+_TABLE_77 = {
+    0: '00',    # Normal mode
+    1: '01',    # Positive sign self-test
+    -1: '10',   # Negative sign self-test
+    'X': '11',  # Not allowed
+}
+
+
+def get_accelerometer_data_rate_bits(data_rate):
+    return _TABLE_72.get(data_rate, '0000')
+
+
+def get_accelerometer_anti_alias_filter_bits(anti_alias):
+    return _TABLE_75.get(anti_alias, '00')
+
+
+def get_accelerometer_full_scale_bits(full_scale):
+    return _TABLE_75.get(full_scale, '100')
+
+
+def get_accelerometer_self_test_bits(self_test):
+    return _TABLE_76.get(self_test, '00')
+
+# Gyroscope settings
+
+# Gyroscope output data rate selection
+_TABLE_21_1 = {
+    95: '00',
+    190: '01',
+    380: '10',
+    760: '11',
+}
+
+# Gyroscope full-scale selection.
+_TABLE_30 = {
+    245: '00',
+    500: '01',
+    2000: '11',
+}
+
+
+# Gyroscope self-test mode
+_TABLE_31 = {
+    0: '00',   # Normal mode
+    1: '01',   # Self-test 0
+    -1: '11',  # Self-test 1
+}
+
+
+def get_gyroscope_data_rate_bits(data_rate):
+    return _TABLE_21_1.get(data_rate, '00')
+
+
+def get_gyroscope_bandwidth_bits(level):
+    if level is None:
+        return '00'
+    else:
+        return ['00', '01', '10', '11'][level]
+
+
+def get_gyroscope_full_scale_bits(full_scale):
+    return _TABLE_30.get(full_scale, '11')
+
+
+def get_gyroscope_self_test_bits(self_test):
+    return _TABLE_31.get(self_test, '00')
+
+# Magnetometer settings
+
+# Magnetometer output data rate selection
+_TABLE_84 = {
+    3.125: '000',
+    6.25: '001',
+    12.5: '010',
+    25: '011',
+    50: '100',
+    100: '110',
+}
+
+# Magnetometer full-scale selection.
+_TABLE_87 = {
+    2: '00',
+    4: '01',
+    8: '10',
+    12: '11'
+}
+
+
+# Magnetometer sensor mode selection.
+_TABLE_90 = {
+    0: '00',   # Continuous-conversion mode
+    1: '01',   # Single-conversion mode
+    -1: '11',  # Power-down mode
+}
+
+
+def get_magnetometer_data_rate_bits(data_rate):
+    return _TABLE_84.get(data_rate, '100')
+
+
+def get_magnetometer_full_scale_bits(full_scale):
+    return _TABLE_87.get(full_scale, '11')
+
+
+def get_magnetometer_sensor_mode_bits(sensor_mode):
+    return _TABLE_90.get(sensor_mode, '00')
