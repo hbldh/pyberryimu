@@ -19,7 +19,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import math
+import os
+import json
 import time
 import datetime
 
@@ -27,31 +28,65 @@ from smbus import SMBus
 
 from pyberryimu.exc import PyBerryIMUError
 from pyberryimu.sensors import LSM9DS0, BMP180
+from pyberryimu.calibration.base import BerryIMUCalibration
 
 
 class BerryIMUClient(object):
     """Client for using the BerryIMU from Python.
 
-    Datasheets for BerryIMU::
+    Settings can be applied by sending in a dict at initialisation.
+    The following keys and corresponding valid values govern the settings, where
+    values in <> denotes default values.
 
-        * `LSM9DS0 reference sheet
-            <http://ozzmaker.com/wp-content/uploads/2014/12/LSM9DS0.pdf>`_
-        * `BMP180 reference sheet
-            <http://ozzmaker.com/wp-content/uploads/2015/01/BMP180-DS000-09.pdf>`_
+    Accelerometer:
+
+    * 'data_rate' [0, 3.125, 6.25, 12.5, 25, 50, 100, 200, 400, 800, 1600]
+    * 'continuous_update': [<True>, False],
+    * 'enabled_x': [<True>, False],
+    * 'enabled_y': [<True>, False],
+    * 'enabled_z': [<True>, False],
+    * 'anti_alias': [<773>, 194, 362, 50],
+    * 'full_scale': [2, 4, 6, 8, <16>],
+    * 'self_test': [<0>, 1, -1, 'X']
+
+    Gyroscope:
+
+    * 'data_rate' [95, <190>, 380, 760]
+    * 'bandwidth_level': [<0>, 1, 2, 3],
+    * 'powerdown_mode': [True, <False>],
+    * 'enabled_x': [<True>, False],
+    * 'enabled_y': [<True>, False],
+    * 'enabled_z': [<True>, False],
+    * 'continuous_update': [<True>, False],
+    * 'little_endian': [True, <False>],
+    * 'full_scale': [245, 500, <2000>],
+    * 'self_test': [<0>, 1, -1]
+
+    Magnetometer:
+
+    * 'data_rate' [3.125, 6.25, 12.5, 25, <50>, 100]
+    * 'full_scale': [2, 4, 8, <12>],
+    * 'sensor_mode': [<0>, 1, -1]
+
+    Read more about these settings it the
+    `LSM9DS0 data sheet <http://ozzmaker.com/wp-content/uploads/2014/12/LSM9DS0.pdf>`_.
+
+    For the barometric pressure sensor BMP180, docstring will be written.
+    `BMP180 data sheet <http://ozzmaker.com/wp-content/uploads/2015/01/BMP180-DS000-09.pdf>`_
 
     """
 
-    def __init__(self, bus=1, acc_setup=1, gyro_setup=1, mag_setup=1, raw_output=False):
+    def __init__(self, bus=1, acc_setup=None, gyro_setup=None, mag_setup=None):
         """Constructor for BerryIMUClient"""
 
         self._bus = None
+        self._calibration_object = BerryIMUCalibration()
 
         # Init time settings.
         self._bus_no = bus
-        self._acc_setup = acc_setup
-        self._gyro_setup = gyro_setup
-        self._mag_setup = mag_setup
-        self._raw_output = raw_output
+        self._acc_setup = acc_setup if acc_setup is not None else {}
+        self._gyro_setup = gyro_setup if gyro_setup is not None else {}
+        self._mag_setup = mag_setup if mag_setup is not None else {}
 
         # BMP180 calibration values.
         self.__ac1 = None
@@ -74,14 +109,26 @@ class BerryIMUClient(object):
             self.open()
             return self.bus
 
+    @property
+    def calibration_object(self):
+        return self._calibration_object
+
+    @calibration_object.setter
+    def calibration_object(self, new_calibration):
+        # TODO: Check if calibration and current client share vital settings.
+        self._calibration_object = new_calibration
+
     def open(self):
         try:
             self._bus = SMBus(self._bus_no)
         except IOError as e:
             if str(e) == '2':
-                raise PyBerryIMUError("/dev/i2c-{0} not found.".format(self._bus_no))
+                raise PyBerryIMUError("/dev/i2c-{0} not found. (IOError 2)".format(self._bus_no))
+            elif str(e) == '5':
+                raise PyBerryIMUError("I2C Input/Output error. (IOError 5)".format(self._bus_no))
             elif str(e) == '13':
-                raise PyBerryIMUError("Permission to read and/or write to /dev/i2c-{0} missing.".format(self._bus_no))
+                raise PyBerryIMUError("Permission to read and/or write to "
+                                      "/dev/i2c-{0} missing. (IOError 13)".format(self._bus_no))
             else:
                 raise PyBerryIMUError('Unhandled IOError: {0}'.format(e))
         except Exception as e:
@@ -110,54 +157,95 @@ class BerryIMUClient(object):
     # Initialisation methods
 
     def _init_accelerometer(self):
-        """Initialize the accelerometer according to the settings flag stored."""
+        """Initialize the accelerometer according to the settings document sent in."""
         # TODO: Better init handling!
-        if self._acc_setup == 1:
-            # z,y,x axis enabled, continuous update, 100Hz data rate
-            self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM, 0b01100111)
-            # +/- 16G full scale
-            self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, 0b00100000)
-        else:
-            raise PyBerryIMUError("Invalid Accelerometer setup flag: {0}.".format(self._acc_setup))
+        reg1_value = (
+            LSM9DS0.get_accelerometer_data_rate_bits(self._acc_setup.get('data_rate', 200)) +
+            ('0' if self._acc_setup.get('continuous_update', False) else '1') +
+            ('1' if self._acc_setup.get('enabled_z', True) else '0') +
+            ('1' if self._acc_setup.get('enabled_y', True) else '0') +
+            ('1' if self._acc_setup.get('enabled_x', True) else '0')
+        )
+        # Write data rate, enabled axes and block data update.
+        self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM, int(reg1_value, 2))
+
+        reg2_value = (
+            LSM9DS0.get_accelerometer_anti_alias_filter_bits(self._acc_setup.get('anti_alias', 773)) +
+            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 16)) +
+            LSM9DS0.get_accelerometer_self_test_bits(self._acc_setup.get('self_test', 0)) +
+            '0'  # SPI Serial Interface Mode selection
+        )
+        # Write anti-alias filter bandwidth, acceleration full scale and self-test mode.
+        self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, int(reg2_value, 2))
 
     def _init_gyroscope(self):
-        """Initialize the gyroscope according to the settings flag stored."""
+        """Initialize the gyroscope according to the settings document sent in."""
         # TODO: Better init handling!
-        if self._gyro_setup == 1:
-            # Normal power mode, all axes enabled
-            self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00001111)
-            # Continuous update, 2000 dps full scale
-            self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b00110000)
 
-            # Conversion constants for this setting [deg/s/LSB]
-            # TODO: Wrap G_GAIN in automatic calculation of value.
-            self.__G_GAIN = 0.070
-            self.__RAD_TO_DEG = math.degrees(1)
-            self.__PI = math.pi
-            # TODO: Study Loop period dependency.
-            # Loop period = 41ms.   This needs to match the time it takes each loop to run
-            self.__LP = 0.041
-        else:
-            raise PyBerryIMUError("Invalid Gyroscope setup flag: {0}.".format(self._gyro_setup))
+        reg1_value = (
+            LSM9DS0.get_gyroscope_data_rate_bits(self._gyro_setup.get('data_rate', 190)) +
+            LSM9DS0.get_gyroscope_bandwidth_bits(self._gyro_setup.get('bandwidth_level', 0)) +
+            ('0' if self._gyro_setup.get('powerdown_mode', False) else '1') +
+            ('1' if self._gyro_setup.get('enabled_z', True) else '0') +
+            ('1' if self._gyro_setup.get('enabled_y', True) else '0') +
+            ('1' if self._gyro_setup.get('enabled_x', True) else '0')
+        )
+        self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, int(reg1_value, 2))
+
+        # TODO: Add setup for high-pass filter, LSM9DS0.CTRL_REG2_G and LSM9DS0.CTRL_REG2_5
+
+        reg4_value = (
+            ('0' if self._gyro_setup.get('continuous_update', False) else '1') +
+            ('1' if self._gyro_setup.get('little_endian', False) else '0') +
+            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 2000)) +
+            '0' +  # Unused bit.
+            LSM9DS0.get_gyroscope_self_test_bits(self._gyro_setup.get('self_test', 0)) +
+            '0'  # SPI Serial Interface Mode selection
+        )
+        self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, int(reg4_value,2))
+
+        # # Conversion constants for this setting [deg/s/LSB]
+        # # TODO: Wrap G_GAIN in automatic calculation of value.
+        # self.__G_GAIN = 0.070
+        # # TODO: Study Loop period dependency.
+        # # Loop period = 41ms.   This needs to match the time it takes each loop to run
+        # self.__LP = 0.041
 
     def _init_magnetometer(self):
-        """Initialize the magnetometer according to the settings flag stored."""
+        """Initialize the magnetometer according to the settings document sent in."""
         # TODO: Better init handling!
-        if self._mag_setup == 1:
-            # Temp enable, M data rate = 50Hz
-            self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, 0b11110000)
-            # +/-12gauss
-            self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM, 0b01100000)
-            # Continuous-conversion mode
-            self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, 0b00000000)
-        else:
-            raise PyBerryIMUError("Invalid Magnetometer setup flag: {0}.".format(self._mag_setup))
+
+        reg5_value = (
+            ('1' if self._gyro_setup.get('enabled_temp', True) else '0') +
+            '11' +  # Magnetic resolution selection (hardcoded to high resolution!)
+            LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate', 190)) +
+            '00'  # Latch interrupts disabled right.
+        )
+        self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, int(reg5_value, 2))
+
+        reg6_value = (
+            '0' +  # Unused bits
+            LSM9DS0.get_magnetometer_full_scale_bits(self._mag_setup.get('full_scale', 2000)) +
+            '00000'  # Unused bits
+        )
+        self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM, int(reg6_value, 2))
+
+        reg7_value = (
+            '00' +  # Accelerometer high-pass filter disabled.
+            '0' +  # Filtered acceleration data selection bypassed.
+            '00' +  # Unused bits
+            '0' +  # Magnetic data low-power mode disabled.
+            LSM9DS0.get_magnetometer_sensor_mode_bits(self._mag_setup.get('sensor_mode', 0))
+        )
+        self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, int(reg7_value, 2))
 
     def _init_barometric_pressure_sensor(self):
         """Initialize the Barometric Pressure Sensor."""
         self._set_bmp180_calibration_values()
         # TODO: Better init handling!
         self.__OVERSAMPLING = 3  # 0..3
+
+    # BMP180 specific methods.
 
     def get_bmp180_chip_id_and_version(self):
         """Gets Chip ID and version for the BMP180 sensor.
@@ -221,9 +309,10 @@ class BerryIMUClient(object):
         :rtype: tuple
 
         """
-        return (self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_X_L_A, LSM9DS0.OUT_X_H_A),
-                self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_Y_L_A, LSM9DS0.OUT_Y_H_A),
-                self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_Z_L_A, LSM9DS0.OUT_Z_H_A))
+        return self.calibration_object.transform_accelerometer_values(
+            (self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_X_L_A, LSM9DS0.OUT_X_H_A),
+             self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_Y_L_A, LSM9DS0.OUT_Y_H_A),
+             self._read(LSM9DS0.ACC_ADDRESS, LSM9DS0.OUT_Z_L_A, LSM9DS0.OUT_Z_H_A)))
 
     def read_gyroscope(self):
         """Method for reading values from the gyroscope.
@@ -232,9 +321,10 @@ class BerryIMUClient(object):
         :rtype: tuple
 
         """
-        return (self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_X_L_G, LSM9DS0.OUT_X_H_G),
-                self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_Y_L_G, LSM9DS0.OUT_Y_H_G),
-                self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_Z_L_G, LSM9DS0.OUT_Z_H_G))
+        return self.calibration_object.transform_gyroscope_values(
+            (self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_X_L_G, LSM9DS0.OUT_X_H_G),
+             self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_Y_L_G, LSM9DS0.OUT_Y_H_G),
+             self._read(LSM9DS0.GYR_ADDRESS, LSM9DS0.OUT_Z_L_G, LSM9DS0.OUT_Z_H_G)))
 
     def read_magnetometer(self):
         """Method for reading values from the magnetometer.
@@ -243,9 +333,19 @@ class BerryIMUClient(object):
         :rtype: tuple
 
         """
-        return (self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_X_L_M, LSM9DS0.OUT_X_H_M),
-                self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_Y_L_M, LSM9DS0.OUT_Y_H_M),
-                self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_Z_L_M, LSM9DS0.OUT_Z_H_M))
+        return self.calibration_object.transform_magnetometer_values(
+            (self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_X_L_M, LSM9DS0.OUT_X_H_M),
+             self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_Y_L_M, LSM9DS0.OUT_Y_H_M),
+             self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_Z_L_M, LSM9DS0.OUT_Z_H_M)))
+
+    def read_temperature_LSM9DS0(self):
+        """Method for reading temperature values from the LSM9DS0 chip.
+
+        :return: Temperature value.
+        :rtype: int
+
+        """
+        return self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_L_XM, LSM9DS0.OUT_TEMP_H_XM)
 
     def read_temperature(self):
         """Method for reading temperature values from the barometric pressure sensor.
@@ -316,3 +416,4 @@ class BerryIMUClient(object):
         p += (x1 + x2 + 3791) >> 4
 
         return p / 100.0
+
