@@ -3,7 +3,7 @@
 I2C communications lib for using [BerryIMU]
 (http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 
-**This library uses and includes several snippets of code form the 
+**This library uses and includes several snippets of code from the 
 [Official BerryIMU repository](http://github.com/mwilliams03/BerryIMU).** 
 
 ## Installation
