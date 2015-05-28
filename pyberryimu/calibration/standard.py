@@ -38,6 +38,9 @@ class StandardCalibration(BerryIMUCalibration):
 
         self._verbose = verbose
 
+        # BerryIMU settings for the client used for calibration.
+        self.berryimu_settings = None
+
         # Accelerometer calibration parameters.
         self.acc_zero_g = None
         self.acc_sensitivity = None
@@ -56,6 +59,9 @@ class StandardCalibration(BerryIMUCalibration):
 
         out = cls()
 
+        # Transfer BerryIMU settings.
+        out.berryimu_settings = doc.get('BerryIMU_settings', {})
+
         # Parse accelerometer calibration values.
         acc_doc = doc.get('accelerometer', {})
         out.acc_zero_g = np.array(acc_doc.get('zero', [0, 0, 0]), 'float')
@@ -72,10 +78,9 @@ class StandardCalibration(BerryIMUCalibration):
         return out
 
     def save(self, save_path=os.path.expanduser('~/.pyberryimu')):
-        # TODO: Save the settings of the client that was used for calibrating as well.
         try:
             doc = {
-                'BerryIMU_settings': {},
+                'BerryIMU_settings': self.berryimu_settings,
                 'accelerometer': {
                     'zero': self.acc_zero_g.tolist(),
                     'sensitivity': self.acc_sensitivity.tolist(),
@@ -92,7 +97,7 @@ class StandardCalibration(BerryIMUCalibration):
         with open(save_path, 'wt') as f:
             json.dump(doc, f, indent=4)
 
-    def calibrate_accelerometer(self, client, save_data_points=True):
+    def calibrate_accelerometer(self, client):
         """Perform calibration of accelerometer.
 
         Computes the Zero G levels, Sensitivity, Scale factor Matrix and the
@@ -145,11 +150,9 @@ class StandardCalibration(BerryIMUCalibration):
         if self.acc_zero_g is not None:
             raise PyBerryIMUError('This object has already been calibrated!')
 
+        self.berryimu_settings = client.get_settings()
         points = self._do_six_point_one_g_calibration(client)
         points += self._add_additional_points(client)
-        if save_data_points:
-            with open(os.path.expanduser('~/calibration_points.npy'), 'wb') as f:
-                np.save(f, np.array(points))
         # Apply the zero G and sensitivity knowledge and then run optimization.
         points = (np.array(points) - self.acc_zero_g) * self.acc_sensitivity
         self._perform_calibration_optimisation(points)
@@ -205,10 +208,11 @@ class StandardCalibration(BerryIMUCalibration):
         part of the calibration. At least three more has to be added to be able to perform optimisation
         for scale factors and bias.
 
-        :param client:
-        :type client:
-        :return:
-        :rtype:
+        :param client: The BerryIMU communication client.
+        :type client: :py:class:`pyberryimu.client.BerryIMUClient`
+        :return: List of points added.
+        :rtype: list
+
         """
         points = []
         while True:
