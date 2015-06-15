@@ -61,7 +61,7 @@ class TimedDataCollectionTool(object):
 def main():
 
     def sleep_slightly():
-        time.sleep(0.001)
+        time.sleep(1/(4*200))
 
     tdct = TimedDataCollectionTool(sleep_slightly, 200, 2)
     out = tdct.run()

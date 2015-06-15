@@ -152,11 +152,11 @@ def get_accelerometer_anti_alias_filter_bits(anti_alias):
 
 
 def get_accelerometer_full_scale_bits(full_scale):
-    return _TABLE_75.get(full_scale, '100')
+    return _TABLE_76.get(full_scale, '100')
 
 
 def get_accelerometer_self_test_bits(self_test):
-    return _TABLE_76.get(self_test, '00')
+    return _TABLE_77.get(self_test, '00')
 
 # Gyroscope settings
 
