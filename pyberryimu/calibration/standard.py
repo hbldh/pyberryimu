@@ -97,6 +97,21 @@ class StandardCalibration(BerryIMUCalibration):
         with open(save_path, 'wt') as f:
             json.dump(doc, f, indent=4)
 
+    def to_json(self):
+        return {
+            'BerryIMU_settings': self.berryimu_settings,
+            'accelerometer': {
+                'zero': self.acc_zero_g.tolist(),
+                'sensitivity': self.acc_sensitivity.tolist(),
+                'scale_factor': self.acc_scale_factor_matrix.flatten().tolist(),
+                'bias': self.acc_bias_vector.tolist()
+            },
+            'gyro': {
+                'zero': self.gyro_zero.tolist(),
+                'sensitivity': self.gyro_sensitivity.tolist(),
+            }
+        }
+
     def calibrate_accelerometer(self, client):
         """Perform calibration of accelerometer.
 

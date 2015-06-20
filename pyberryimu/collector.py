@@ -24,7 +24,7 @@ import datetime
 
 
 class TimedDataCollectionTool(object):
-    """"""
+    """A simple tools for """
 
     def __init__(self, callback_function, frequency, duration):
         """Constructor for TimedDataCollectionTool"""
@@ -54,18 +54,6 @@ class TimedDataCollectionTool(object):
             data.append(self.callback())
             if (t - start_t) > self.duration:
                 break
-
         return start_dt, timestamps, data
 
 
-def main():
-
-    def sleep_slightly():
-        time.sleep(1/(4*200))
-
-    tdct = TimedDataCollectionTool(sleep_slightly, 200, 2)
-    out = tdct.run()
-    print(out[1])
-
-if __name__ == "__main__":
-    main()
