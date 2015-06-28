@@ -25,10 +25,14 @@ import datetime
 
 import numpy as np
 
+from pyberryimu import version
 
-class DataContainer(object):
+
+class PyBerryIMUContainer(object):
 
     def __init__(self, start_time, client_settings, calibration_parameters=None):
+
+        self.pyberryimu_version = version
 
         self.start_time = start_time
         self.client_settings = client_settings
@@ -121,6 +125,8 @@ class DataContainer(object):
     def from_json(cls, doc):
         out = cls(datetime.datetime.strptime(doc.get('recorded'), '%Y-%m-%d %H:%M:%S'),
             doc.get('client_settings'), doc.get('calibration_parameters'))
+        out.pyberryimu_version = doc.get('pyberryimu_version', version)
+
         out.timestamps = doc.get('data', {}).get('timestamps')
         out.accelerometer = doc.get('data', {}).get('accelerometer')
         out.gyroscope = doc.get('data', {}).get('gyroscope')

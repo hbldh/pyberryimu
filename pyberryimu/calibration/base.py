@@ -36,6 +36,9 @@ class BerryIMUCalibration(object):
     def save(self, save_path=os.path.expanduser('~/.pyberryimu')):
         raise NotImplementedError("Base BerryIMUCalibration is non-savable.")
 
+    def to_json(self):
+        return {}
+
     def calibrate_accelerometer(self, client):
         """Perform calibration of the BerryIMU accelerometer."""
         raise NotImplementedError("Base BerryIMUCalibration is not possible to calibrate.")
