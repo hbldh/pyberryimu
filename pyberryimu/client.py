@@ -37,13 +37,13 @@ class BerryIMUClient(object):
 
     Accelerometer:
 
-    * 'data_rate' [0, 3.125, 6.25, 12.5, 25, 50, 100, 200, 400, 800, 1600]
-    * 'continuous_update': [<True>, False],
+    * 'data_rate' [0, 3.125, 6.25, 12.5, 25, 50, 100, <200>, 400, 800, 1600]
+    * 'continuous_update': [True, <False>],
     * 'enabled_x': [<True>, False],
     * 'enabled_y': [<True>, False],
     * 'enabled_z': [<True>, False],
     * 'anti_alias': [<773>, 194, 362, 50],
-    * 'full_scale': [2, 4, 6, 8, <16>],
+    * 'full_scale': [2, 4, 6, <8>, 16],
     * 'self_test': [<0>, 1, -1, 'X']
 
     Gyroscope:
@@ -54,9 +54,9 @@ class BerryIMUClient(object):
     * 'enabled_x': [<True>, False],
     * 'enabled_y': [<True>, False],
     * 'enabled_z': [<True>, False],
-    * 'continuous_update': [<True>, False],
+    * 'continuous_update': [True, <False>],
     * 'little_endian': [True, <False>],
-    * 'full_scale': [245, 500, <2000>],
+    * 'full_scale': [245, <500>, 2000],
     * 'self_test': [<0>, 1, -1]
 
     Magnetometer:
@@ -168,7 +168,7 @@ class BerryIMUClient(object):
 
         reg2_value = (
             LSM9DS0.get_accelerometer_anti_alias_filter_bits(self._acc_setup.get('anti_alias', 773)) +
-            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 16)) +
+            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 8)) +
             LSM9DS0.get_accelerometer_self_test_bits(self._acc_setup.get('self_test', 0)) +
             '0'  # SPI Serial Interface Mode selection
         )
@@ -194,7 +194,7 @@ class BerryIMUClient(object):
         reg4_value = (
             ('0' if self._gyro_setup.get('continuous_update', False) else '1') +
             ('1' if self._gyro_setup.get('little_endian', False) else '0') +
-            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 2000)) +
+            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 500)) +
             '0' +  # Unused bit.
             LSM9DS0.get_gyroscope_self_test_bits(self._gyro_setup.get('self_test', 0)) +
             '0'  # SPI Serial Interface Mode selection

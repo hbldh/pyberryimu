@@ -112,12 +112,12 @@ class PyBerryIMUContainer(object):
             'client_settings': self.client_settings,
             'calibration_parameters': self.calibration_parameters,
             'data': {
-                'timestamps': self.timestamps.tolist() if self.timestamps else None,
-                'accelerometer': self.accelerometer.tolist() if self.accelerometer else None,
-                'gyroscope': self.gyroscope.tolist() if self.gyroscope else None,
-                'magnetometer': self.magnetometer.tolist() if self.magnetometer else None,
-                'pressure': self.pressure.tolist() if self.pressure else None,
-                'temperature': self.temperature.tolist() if self.temperature else None,
+                'timestamps': self.timestamps.tolist() if self.timestamps is not None else None,
+                'accelerometer': self.accelerometer.tolist() if self.accelerometer is not None else None,
+                'gyroscope': self.gyroscope.tolist() if self.gyroscope is not None else None,
+                'magnetometer': self.magnetometer.tolist() if self.magnetometer is not None else None,
+                'pressure': self.pressure.tolist() if self.pressure is not None else None,
+                'temperature': self.temperature.tolist() if self.temperature is not None else None,
             }
         }
 

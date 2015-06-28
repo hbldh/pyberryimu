@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import time
 import datetime
+import itertools
 
 import numpy as np
 
@@ -95,13 +96,17 @@ class BerryIMURecorder(object):
         if mag:
             sensor_methods_to_call.append(self.client.read_magnetometer)
         if pres:
-            sensor_methods_to_call.append(self.client.read_pressure)
+            def pressure_reader():
+                return [self.client.read_pressure(), ]
+            sensor_methods_to_call.append(pressure_reader)
         if temp:
-            sensor_methods_to_call.append(self.client.read_temperature)
+            def temperature_reader():
+                return [self.client.read_temperature(), ]
+            sensor_methods_to_call.append(temperature_reader)
 
         def recording_function():
-            return [f() for f in sensor_methods_to_call]
-
+            return list(itertools.chain(*[f() for f in sensor_methods_to_call]))
+        
         def finalizing_function(container, data):
             """A method for parsing recorded data to proper container positions.
 
@@ -113,7 +118,8 @@ class BerryIMURecorder(object):
             :rtype: :py:class:`pyberryimu.container.PyBerryIMUContainer`
 
             """
-            data = np.array(data)
+            container.timestamps = data[1]
+            data = np.array(data[2])
             n = 0
             if acc:
                 container.accelerometer = data[:, n:n+3]
@@ -130,6 +136,11 @@ class BerryIMURecorder(object):
             if temp:
                 container.temperature = data[:, n]
                 n += 3
+            mean_recording_freq = np.mean(1/np.diff(container.timestamps))
+            if np.abs((mean_recording_freq - self.frequency) / self.frequency) > 0.05:
+                print("Recording deviation detected: Desired freq "
+                      "was {0} Hz, achieved was {1:.2f} Hz.".format(self.frequency, mean_recording_freq))
+
             return data_obj
 
         out = self._record(recording_function)

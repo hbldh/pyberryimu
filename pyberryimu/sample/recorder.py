@@ -20,18 +20,19 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import os
-from operator import add
 
 import numpy as np
 
 from pyberryimu.client import BerryIMUClient
+from pyberryimu.calibration.standard import StandardCalibration
 from pyberryimu.recorder import BerryIMURecorder
 from pyberryimu.container import PyBerryIMUContainer
 
 
 def main():
     with BerryIMUClient() as client:
-        brec = BerryIMURecorder(client, frequency=100, duration=10)
+        client.calibration_object = StandardCalibration.load()
+        brec = BerryIMURecorder(client, frequency=100, duration=3)
         dc = brec.record(acc=True, gyro=True, mag=True, pres=False, temp=False)
     dc.save(os.path.expanduser('~/pyberryimu_test_data'))
 
