@@ -26,7 +26,7 @@ import numpy as np
 from pyberryimu.client import BerryIMUClient
 from pyberryimu.calibration.standard import StandardCalibration
 from pyberryimu.recorder import BerryIMURecorder
-from pyberryimu.container import PyBerryIMUContainer
+from pyberryimu.container import BerryIMUDataContainer
 
 
 def main():

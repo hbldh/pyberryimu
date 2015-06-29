@@ -22,11 +22,11 @@ from __future__ import absolute_import
 from pyberryimu.client import BerryIMUClient
 
 
-def continuous_sampling_test(client):
+def ten_samples_test(client):
     for k in xrange(10):
         print("Acc: {0}, Gyro: {1}".format(client.read_accelerometer(), client.read_gyroscope()))
 
 
 def main():
     with BerryIMUClient() as client:
-        continuous_sampling_test(client)
+        ten_samples_test(client)

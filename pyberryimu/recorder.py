@@ -25,7 +25,7 @@ import itertools
 
 import numpy as np
 
-from pyberryimu.container import PyBerryIMUContainer
+from pyberryimu.container import BerryIMUDataContainer
 
 
 class BerryIMURecorder(object):
@@ -84,7 +84,7 @@ class BerryIMURecorder(object):
         :param temp: Record temperature values.
         :type temp: bool
         :return: The recorded data container.
-        :rtype: :py:class:`pyberryimu.container.PyBerryIMUContainer`
+        :rtype: :py:class:`pyberryimu.container.BerryIMUDataContainer`
 
         """
 
@@ -96,26 +96,34 @@ class BerryIMURecorder(object):
         if mag:
             sensor_methods_to_call.append(self.client.read_magnetometer)
         if pres:
+            # Define a simple wrapping function to output array instead of scalar.
             def pressure_reader():
                 return [self.client.read_pressure(), ]
             sensor_methods_to_call.append(pressure_reader)
         if temp:
+            # Define a simple wrapping function to output array instead of scalar.
             def temperature_reader():
                 return [self.client.read_temperature(), ]
             sensor_methods_to_call.append(temperature_reader)
 
         def recording_function():
+            """Read all sensors,concatenate all data lists to one list and return it.
+
+            :return: The data read.
+            :rtype: list
+
+            """
             return list(itertools.chain(*[f() for f in sensor_methods_to_call]))
         
         def finalizing_function(container, data):
             """A method for parsing recorded data to proper container positions.
 
             :param container: The container to store the recorded data in.
-            :type container: :py:class:`pyberryimu.container.PyBerryIMUContainer`
+            :type container: :py:class:`pyberryimu.container.BerryIMUDataContainer`
             :param data: The recorded data.
             :type data: array or tuple
             :return: The data container.
-            :rtype: :py:class:`pyberryimu.container.PyBerryIMUContainer`
+            :rtype: :py:class:`pyberryimu.container.BerryIMUDataContainer`
 
             """
             container.timestamps = data[1]
@@ -136,6 +144,8 @@ class BerryIMURecorder(object):
             if temp:
                 container.temperature = data[:, n]
                 n += 3
+
+            # Simple check for deviant recording frequency.
             mean_recording_freq = np.mean(1/np.diff(container.timestamps))
             if np.abs((mean_recording_freq - self.frequency) / self.frequency) > 0.05:
                 print("Recording deviation detected: Desired freq "
@@ -144,7 +154,7 @@ class BerryIMURecorder(object):
             return data_obj
 
         out = self._record(recording_function)
-        data_obj = PyBerryIMUContainer(out[0], self.client.get_settings(), self.client.calibration_object.to_json())
+        data_obj = BerryIMUDataContainer(out[0], self.client.get_settings(), self.client.calibration_object.to_json())
         return finalizing_function(data_obj, out)
 
     def record_generic_callback(self, callback_function, finalizing_function):
@@ -153,12 +163,12 @@ class BerryIMURecorder(object):
         :param callback_function:
         :type callback_function: :py:class:`function`
         :param finalizing_function: A method for restructuring the obtained
-            data into a :py:class:`pyberryimu.container.PyBerryIMUContainer` and returning it.
+            data into a :py:class:`pyberryimu.container.BerryIMUDataContainer` and returning it.
         :type finalizing_function: :py:class:`function`
         :return: The recorded data object.
-        :rtype: :py:class:`pyberryimu.container.PyBerryIMUContainer`
+        :rtype: :py:class:`pyberryimu.container.BerryIMUDataContainer`
 
         """
         out = self._record(callback_function)
-        data_obj = PyBerryIMUContainer(out[0], self.client.get_settings(), self.client.calibration_object.to_json())
+        data_obj = BerryIMUDataContainer(out[0], self.client.get_settings(), self.client.calibration_object.to_json())
         return finalizing_function(data_obj, out)

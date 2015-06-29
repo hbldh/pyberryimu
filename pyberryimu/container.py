@@ -28,7 +28,7 @@ import numpy as np
 from pyberryimu import version
 
 
-class PyBerryIMUContainer(object):
+class BerryIMUDataContainer(object):
 
     def __init__(self, start_time, client_settings, calibration_parameters=None):
 

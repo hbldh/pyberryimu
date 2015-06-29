@@ -25,6 +25,7 @@ import time
 
 import numpy as np
 
+from pyberryimu import version
 from pyberryimu.exc import PyBerryIMUError
 from pyberryimu.calibration.base import BerryIMUCalibration
 
@@ -36,6 +37,7 @@ class StandardCalibration(BerryIMUCalibration):
         """Constructor for StandardCalibration"""
         super(StandardCalibration, self).__init__()
 
+        self.pyberryimu_version = version
         self._verbose = verbose
 
         # BerryIMU settings for the client used for calibration.
@@ -60,7 +62,8 @@ class StandardCalibration(BerryIMUCalibration):
         out = cls()
 
         # Transfer BerryIMU settings.
-        out.berryimu_settings = doc.get('BerryIMU_settings', {})
+        out.berryimu_settings = doc.get('pyberryimu_version', version)
+        out.pyberryimu_version = doc.get('BerryIMU_settings', {})
 
         # Parse accelerometer calibration values.
         acc_doc = doc.get('accelerometer', {})
@@ -99,6 +102,7 @@ class StandardCalibration(BerryIMUCalibration):
 
     def to_json(self):
         return {
+            'pyberryimu_version': version,
             'BerryIMU_settings': self.berryimu_settings,
             'accelerometer': {
                 'zero': self.acc_zero_g.tolist(),
