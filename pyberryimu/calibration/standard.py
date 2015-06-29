@@ -25,6 +25,7 @@ import time
 
 import numpy as np
 
+from pyberryimu import version
 from pyberryimu.exc import PyBerryIMUError
 from pyberryimu.calibration.base import BerryIMUCalibration
 
@@ -36,6 +37,7 @@ class StandardCalibration(BerryIMUCalibration):
         """Constructor for StandardCalibration"""
         super(StandardCalibration, self).__init__()
 
+        self.pyberryimu_version = version
         self._verbose = verbose
 
         # BerryIMU settings for the client used for calibration.
@@ -60,7 +62,8 @@ class StandardCalibration(BerryIMUCalibration):
         out = cls()
 
         # Transfer BerryIMU settings.
-        out.berryimu_settings = doc.get('BerryIMU_settings', {})
+        out.berryimu_settings = doc.get('pyberryimu_version', version)
+        out.pyberryimu_version = doc.get('BerryIMU_settings', {})
 
         # Parse accelerometer calibration values.
         acc_doc = doc.get('accelerometer', {})
@@ -96,6 +99,22 @@ class StandardCalibration(BerryIMUCalibration):
             raise PyBerryIMUError("Could not save ")
         with open(save_path, 'wt') as f:
             json.dump(doc, f, indent=4)
+
+    def to_json(self):
+        return {
+            'pyberryimu_version': version,
+            'BerryIMU_settings': self.berryimu_settings,
+            'accelerometer': {
+                'zero': self.acc_zero_g.tolist(),
+                'sensitivity': self.acc_sensitivity.tolist(),
+                'scale_factor': self.acc_scale_factor_matrix.flatten().tolist(),
+                'bias': self.acc_bias_vector.tolist()
+            },
+            'gyro': {
+                'zero': self.gyro_zero.tolist(),
+                'sensitivity': self.gyro_sensitivity.tolist(),
+            }
+        }
 
     def calibrate_accelerometer(self, client):
         """Perform calibration of accelerometer.
@@ -349,7 +368,9 @@ class StandardCalibration(BerryIMUCalibration):
         raise NotImplementedError("This has not been implemented yet.")
 
     def transform_accelerometer_values(self, acc_values):
+        # First convert from integer representation to float representation in unit g.
         raw_g_values = (acc_values - self.acc_zero_g) * self.acc_sensitivity
+        # Then apply the calibration scale matrix and bias.
         converted_g_values = self.acc_scale_factor_matrix.dot(raw_g_values - self.acc_bias_vector)
         return tuple(converted_g_values.tolist())
 

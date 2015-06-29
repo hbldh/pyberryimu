@@ -19,10 +19,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import os
-import json
 import time
-import datetime
 
 from smbus import SMBus
 
@@ -40,13 +37,13 @@ class BerryIMUClient(object):
 
     Accelerometer:
 
-    * 'data_rate' [0, 3.125, 6.25, 12.5, 25, 50, 100, 200, 400, 800, 1600]
-    * 'continuous_update': [<True>, False],
+    * 'data_rate' [0, 3.125, 6.25, 12.5, 25, 50, 100, <200>, 400, 800, 1600]
+    * 'continuous_update': [True, <False>],
     * 'enabled_x': [<True>, False],
     * 'enabled_y': [<True>, False],
     * 'enabled_z': [<True>, False],
     * 'anti_alias': [<773>, 194, 362, 50],
-    * 'full_scale': [2, 4, 6, 8, <16>],
+    * 'full_scale': [2, 4, 6, <8>, 16],
     * 'self_test': [<0>, 1, -1, 'X']
 
     Gyroscope:
@@ -57,9 +54,9 @@ class BerryIMUClient(object):
     * 'enabled_x': [<True>, False],
     * 'enabled_y': [<True>, False],
     * 'enabled_z': [<True>, False],
-    * 'continuous_update': [<True>, False],
+    * 'continuous_update': [True, <False>],
     * 'little_endian': [True, <False>],
-    * 'full_scale': [245, 500, <2000>],
+    * 'full_scale': [245, <500>, 2000],
     * 'self_test': [<0>, 1, -1]
 
     Magnetometer:
@@ -76,7 +73,7 @@ class BerryIMUClient(object):
 
     """
 
-    def __init__(self, bus=1, acc_setup=None, gyro_setup=None, mag_setup=None):
+    def __init__(self, bus=1, settings=None):
         """Constructor for BerryIMUClient"""
 
         self._bus = None
@@ -84,9 +81,9 @@ class BerryIMUClient(object):
 
         # Init time settings.
         self._bus_no = bus
-        self._acc_setup = acc_setup if acc_setup is not None else {}
-        self._gyro_setup = gyro_setup if gyro_setup is not None else {}
-        self._mag_setup = mag_setup if mag_setup is not None else {}
+        self._acc_setup = settings.get('accelerometer', {}) if settings is not None else {}
+        self._gyro_setup = settings.get('gyroscope', {}) if settings is not None else {}
+        self._mag_setup = settings.get('magnetometer', {}) if settings is not None else {}
 
         # BMP180 calibration values.
         self.__ac1 = None
@@ -171,7 +168,7 @@ class BerryIMUClient(object):
 
         reg2_value = (
             LSM9DS0.get_accelerometer_anti_alias_filter_bits(self._acc_setup.get('anti_alias', 773)) +
-            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 16)) +
+            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 8)) +
             LSM9DS0.get_accelerometer_self_test_bits(self._acc_setup.get('self_test', 0)) +
             '0'  # SPI Serial Interface Mode selection
         )
@@ -197,7 +194,7 @@ class BerryIMUClient(object):
         reg4_value = (
             ('0' if self._gyro_setup.get('continuous_update', False) else '1') +
             ('1' if self._gyro_setup.get('little_endian', False) else '0') +
-            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 2000)) +
+            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 500)) +
             '0' +  # Unused bit.
             LSM9DS0.get_gyroscope_self_test_bits(self._gyro_setup.get('self_test', 0)) +
             '0'  # SPI Serial Interface Mode selection
@@ -239,10 +236,10 @@ class BerryIMUClient(object):
         self.__OVERSAMPLING = 3  # 0..3
 
     def get_settings(self):
-        return {
+        settings = {
             'accelerometer': {
                 'reg1': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM)),
-                'reg2': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM))
+                'reg2': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM)),
             },
             'gyroscope': {
                 'reg1': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G)),
@@ -254,6 +251,10 @@ class BerryIMUClient(object):
                 'reg7': "{0:08b}".format(self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM)),
             }
         }
+        settings['accelerometer'].update(self._acc_setup)
+        settings['gyroscope'].update(self._gyro_setup)
+        settings['magnetometer'].update(self._mag_setup)
+        return settings
 
     # BMP180 specific methods.
 

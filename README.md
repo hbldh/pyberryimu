@@ -15,11 +15,6 @@ I2C communications lib for using [BerryIMU]
 - python-dev
 - libffi-dev
 
-##### Recommended Raspbian packages
-- liblapack-dev
-- libblas-dev
-- libatlas-dev
-
 After the package dependencies above are installed, PyBerryIMU can be installed with pip: 
 
     pip install https://github.com/hbldh/pyberryimu
@@ -30,7 +25,7 @@ This library uses [smbus-cffi](https://github.com/bivab/smbus-cffi) for communic
 
 ### Basic use
 
-The BerryIMU can be interfaced with bu using the `BerryIMUClient`:
+The BerryIMU can be interfaced with by using the `BerryIMUClient`:
 
 ```python
 from pyberryimu.client import BerryIMUClient
@@ -46,6 +41,41 @@ with BerryIMUClient(bus=1) as c:
 This returns raw readings from the BerryIMU regarding acceleration, 
 angular velocity and magnetic fields; it requires calibration to be useful.
 The pressure and temperature are already converted to SI units.
+
+#### Recorder to obtain data for offline analysis
+
+A simple tool for recording data from the BerryIMU to have for offline analysis
+is also included in the module.
+
+```python
+import os
+from pyberryimu.client import BerryIMUClient
+from pyberryimu.recorder import BerryIMURecorder
+
+with BerryIMUClient() as c:
+    brec = BerryIMURecorder(c, frequency=100, duration=10)
+    data_container = brec.record(acc=True, gyro=True, mag=True, pres=False, temp=False)
+    data_container.save(os.path.expanduser('~/pyberryimu_rec_test.json'))
+```
+
+The data is then stored in a highly non-optimized way as a JSON document that can be loaded as such:
+
+```python
+import os
+from pyberryimu.container import BerryIMUDataContainer
+
+data_container = BerryIMUDataContainer.load(os.path.expanduser('~/pyberryimu_rec_test.json'))
+```
+
+See the example in [pyberryimu/sample/recorder.py]
+(https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/recorder.py)
+
+> Note that the maximum frequency is about 100 Hz for reading from all three IMU sensors 
+> (accelerometer, gyroscope and magnetometer). When adding pressure readings it drops to 
+> about 10 Hz due to the fact that one has to wait during pressure and temperature reading.
+> Run max frequency test script [pyberryimu/sample/max_freq_test.py]
+> (https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/max_freq_test.py) to
+> get a more complete picture of maximal frequencies.
 
 ### Calibration
 
