@@ -368,7 +368,9 @@ class StandardCalibration(BerryIMUCalibration):
         raise NotImplementedError("This has not been implemented yet.")
 
     def transform_accelerometer_values(self, acc_values):
+        # First convert from integer representation to float representation in unit g.
         raw_g_values = (acc_values - self.acc_zero_g) * self.acc_sensitivity
+        # Then apply the calibration scale matrix and bias.
         converted_g_values = self.acc_scale_factor_matrix.dot(raw_g_values - self.acc_bias_vector)
         return tuple(converted_g_values.tolist())
 
