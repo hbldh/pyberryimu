@@ -35,17 +35,13 @@ class StandardCalibration(BerryIMUCalibration):
 
     def __init__(self, verbose=False):
         """Constructor for StandardCalibration"""
-        super(StandardCalibration, self).__init__()
-
-        self.pyberryimu_version = version
-        self._verbose = verbose
-
-        # BerryIMU settings for the client used for calibration.
-        self.berryimu_settings = None
+        super(StandardCalibration, self).__init__(verbose)
 
         # Accelerometer calibration parameters.
-        self.acc_zero_g = None
-        self.acc_sensitivity = None
+        self._acc_zero_g = None
+        self._acc_sensitivity = None
+        self._acc_calibration_points = None
+
         self.acc_scale_factor_matrix = None
         self.acc_bias_vector = None
 
@@ -53,6 +49,9 @@ class StandardCalibration(BerryIMUCalibration):
         # TODO: Remove default values here after implementation of gyro calibration.
         self.gyro_zero = np.array([0, 0, 0], 'float')
         self.gyro_sensitivity = np.array([1, 1, 1], 'float')
+
+        self.__mid_v = 2 ** 15
+        self.__max_v = (2 ** 16) - 1
 
     @classmethod
     def load(cls, doc_path=os.path.expanduser('~/.pyberryimu')):
@@ -67,8 +66,6 @@ class StandardCalibration(BerryIMUCalibration):
 
         # Parse accelerometer calibration values.
         acc_doc = doc.get('accelerometer', {})
-        out.acc_zero_g = np.array(acc_doc.get('zero', [0, 0, 0]), 'float')
-        out.acc_sensitivity = np.array(acc_doc.get('sensitivity', [1, 1, 1]), 'float')
         out.acc_scale_factor_matrix = np.reshape(
             np.array(acc_doc.get('scale_factor', np.eye(3).flatten()), 'float'), (3, 3))
         out.acc_bias_vector = np.array(acc_doc.get('bias', [0, 0, 0]), 'float')
@@ -82,31 +79,16 @@ class StandardCalibration(BerryIMUCalibration):
 
     def save(self, save_path=os.path.expanduser('~/.pyberryimu')):
         try:
-            doc = {
-                'BerryIMU_settings': self.berryimu_settings,
-                'accelerometer': {
-                    'zero': self.acc_zero_g.tolist(),
-                    'sensitivity': self.acc_sensitivity.tolist(),
-                    'scale_factor': self.acc_scale_factor_matrix.flatten().tolist(),
-                    'bias': self.acc_bias_vector.tolist()
-                },
-                'gyro': {
-                    'zero': self.gyro_zero.tolist(),
-                    'sensitivity': self.gyro_sensitivity.tolist(),
-                }
-            }
+            doc = self.to_json()
         except Exception as e:
-            raise PyBerryIMUError("Could not save ")
+            raise PyBerryIMUError("Could not save calibration data to file: {0}".format(e))
         with open(save_path, 'wt') as f:
             json.dump(doc, f, indent=4)
 
     def to_json(self):
-        return {
-            'pyberryimu_version': version,
-            'BerryIMU_settings': self.berryimu_settings,
+        doc = super(StandardCalibration, self).to_json()
+        doc.update({
             'accelerometer': {
-                'zero': self.acc_zero_g.tolist(),
-                'sensitivity': self.acc_sensitivity.tolist(),
                 'scale_factor': self.acc_scale_factor_matrix.flatten().tolist(),
                 'bias': self.acc_bias_vector.tolist()
             },
@@ -114,7 +96,11 @@ class StandardCalibration(BerryIMUCalibration):
                 'zero': self.gyro_zero.tolist(),
                 'sensitivity': self.gyro_sensitivity.tolist(),
             }
-        }
+        })
+        return doc
+
+    def _vnorm(self, x):
+        return (x + self.__mid_v) / self.__max_v
 
     def calibrate_accelerometer(self, client):
         """Perform calibration of accelerometer.
@@ -131,6 +117,9 @@ class StandardCalibration(BerryIMUCalibration):
 
         The mathematical model used is  A = M(V - B)
         where M and B are scale factor matrix and bias vector respectively.
+        Note that the vector V has elements in [0, 1.0] representing the
+        normed output value of the sensor. This is calculated by
+        `(a_raw + (2 ** 15)) / ((2 ** 16) - 1)`.
 
         M = [ Mxx Mxy Mxz; Myx Myy Myz; Mzx Mzy Mzz ]
         where  Mxy = Myx; Myz = Mzy; Mxz = Mzx;
@@ -142,16 +131,13 @@ class StandardCalibration(BerryIMUCalibration):
         and the crosstalk effect between different channels caused
         by the sensor electronics. In an ideal world, M = 1; B = 0
 
-        To convert raw measurements to units of g use the following formula:
-        Vx_g = (Vx - Zero_x)* Sensitivity_x
-        Vy_g = (Vy - Zero_y)* Sensitivity_y
-        Vz_g = (Vz - Zero_z)* Sensitivity_z
-
+        First, six points of +/-1 g on each axis is recorded. From these readings
+        a first estimate of zero G offset and primary axis scale factors is obtained.
         To find the zero values of your own accelerometer, note the max and
         minimum of the ADC values for each axis and use the following formula:
-        Zero_x = (Max_x - Min_x)/2; Zero_y = (Max_y - Min_y)/2; Zero_z = (Max_z - Min_z)/2
+        Zero_x = (Max_x - Min_x)/2; ...
         To find the Sensitivity use the following formula:
-        Sensitivity_x = 2 / (Max_x - Min_x);
+        Sensitivity_x = 2 / (Max_x - Min_x); ...
 
         Reference:
         Iuri Frosio, Federico Pedersini, N. Alberto Borghese
@@ -166,20 +152,36 @@ class StandardCalibration(BerryIMUCalibration):
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
 
         """
-        if self.acc_zero_g is not None:
+        if self._acc_zero_g is not None:
             raise PyBerryIMUError('This object has already been calibrated!')
 
         self.berryimu_settings = client.get_settings()
         points = self._do_six_point_one_g_calibration(client)
         points += self._add_additional_points(client)
-        # Apply the zero G and sensitivity knowledge and then run optimization.
-        points = (np.array(points) - self.acc_zero_g) * self.acc_sensitivity
+        self._acc_calibration_points = np.array(points)
+        self._perform_calibration_optimisation(
+            self._vnorm(self._acc_calibration_points))
+      
+    def calibrate_with_stored_points(self, points):
+        self._acc_zero_g = np.zeros((3, ), 'float')
+        self._acc_sensitivity = np.zeros((3, ), 'float')
+        for index in xrange(3):
+            this_axis_points = []
+            for side in [0, 1]:
+                this_axis_points.append(self._vnorm(points[index * 2 + side, index]))
+
+            v_max, v_min = max(this_axis_points), min(this_axis_points)
+            self._acc_zero_g[index] = (v_max + v_min) / 2
+            v_max = v_max - self._acc_zero_g[index]
+            v_min = v_min - self._acc_zero_g[index]
+            self._acc_sensitivity[index] = 2 / (v_max - v_min)
+        points = self._vnorm(np.array(points))
         self._perform_calibration_optimisation(points)
 
     def _do_six_point_one_g_calibration(self, client):
         points = []
-        self.acc_zero_g = np.zeros((3, ), 'float')
-        self.acc_sensitivity = np.zeros((3, ), 'float')
+        self._acc_zero_g = np.zeros((3, ), 'float')
+        self._acc_sensitivity = np.zeros((3, ), 'float')
 
         # Method for polling until desired axis is oriented as requested.
         def _wait_for_compliance():
@@ -212,11 +214,13 @@ class StandardCalibration(BerryIMUCalibration):
                     acc_values.append(client.read_accelerometer())
 
                 points.append(np.mean(acc_values, axis=0).tolist())
-                this_axis_points.append(points[-1][index])
+                this_axis_points.append(self._vnorm(points[-1][index]))
 
             v_max, v_min = max(this_axis_points), min(this_axis_points)
-            self.acc_zero_g[index] = (v_max + v_min) / 2
-            self.acc_sensitivity[index] = 2 / (v_max - v_min)
+            self._acc_zero_g[index] = (v_max + v_min) / 2
+            v_max = v_max - self._acc_zero_g[index]
+            v_min = v_min - self._acc_zero_g[index]
+            self._acc_sensitivity[index] = 2 / (v_max - v_min)
 
         return points
 
@@ -262,11 +266,11 @@ class StandardCalibration(BerryIMUCalibration):
             raise ValueError('Need at least 9 Measurements for the calibration procedure!')
 
         # Optimisation error function.
-        error_function = lambda M, b, y: np.sum((M.dot((b - y)) ** 2)) - 1
+        error_function = lambda M, b, y: np.sum((M.dot((y - b)) ** 2)) - 1
 
         # Method for calculating the Jacobian.
         def _jacobian(M_mat, b_vec, point):
-            # TODO: Clean up Jacobian calculation code.
+            # TODO: Clean up Jacobian calculation code. Make it more concise.
             jac = np.zeros((9, ), 'float')
 
             jac[0] = 2 * (b_vec[0] - point[0]) * (
@@ -323,12 +327,14 @@ class StandardCalibration(BerryIMUCalibration):
 
         gain = 1  # Damping Gain - Start with 1
         damping = 0.01    # Damping parameter - has to be less than 1.
-        tolerance = 1e-9
+        tolerance = 1e-12
         R_prior = 100000
-        nbr_iterations = 200
+        nbr_iterations = 2000
 
         # Initial Guess values of M and b.
-        x = np.array([5, 0.5, 0.5, 5, 0.5, 5, 0.5, 0.5, 0.5])
+        x = np.array([self._acc_sensitivity[0], 0.0, 0.0,
+                      self._acc_sensitivity[1], 0.0, self._acc_sensitivity[2],
+                      self._acc_zero_g[0], self._acc_zero_g[1], self._acc_zero_g[2]])
         last_x = x.copy()
         # Residuals vector
         R = np.zeros((nbr_points, ), 'float')
@@ -337,7 +343,7 @@ class StandardCalibration(BerryIMUCalibration):
 
         for n in xrange(nbr_iterations):
             # Calculate the Jacobian at every iteration.
-            M, b = optvec_to_M_and_b(x)
+            M, b = optvec_to_M_and_b(x)            
             for i in xrange(nbr_points):
                 R[i] = error_function(M, b, points[i, :])
                 J[i, :] = _jacobian(M, b, points[i, :])
@@ -368,10 +374,9 @@ class StandardCalibration(BerryIMUCalibration):
         raise NotImplementedError("This has not been implemented yet.")
 
     def transform_accelerometer_values(self, acc_values):
-        # First convert from integer representation to float representation in unit g.
-        raw_g_values = (acc_values - self.acc_zero_g) * self.acc_sensitivity
-        # Then apply the calibration scale matrix and bias.
-        converted_g_values = self.acc_scale_factor_matrix.dot(raw_g_values - self.acc_bias_vector)
+        # Normalize and then apply the calibration scale matrix and bias.
+        converted_g_values = self.acc_scale_factor_matrix.dot(
+            self._vnorm(np.array(acc_values)) - self.acc_bias_vector)
         return tuple(converted_g_values.tolist())
 
     def transform_gyroscope_values(self, gyro_values):
@@ -383,37 +388,32 @@ class StandardCalibration(BerryIMUCalibration):
 
 
 def main():
-    # V = np.array([[-0.009345794, 0.00952381, 1],
-    #               [-1, -0.00952381, 0.044247788],
-    #               [1, 0.028571429, 0.008849558],
-    #               [-0.009345794, 1, -0.115044248],
-    #               [0.028037383, -1, 0.008849558],
-    #               [-0.775700935, -0.638095238, 0.008849558],
-    #               [-0.570093458, 0.80952381, -0.026548673],
-    #               [0.644859813, 0.771428571, -0.061946903],
-    #               [0.775700935, -0.619047619, -0.115044248],
-    #               [0.981308411, 0.00952381, -0.256637168]])
-    V = np.array([[-1575.43324607, 58.07787958, -72.69371728],
-                  [1189.53102547, -11.92749837, -23.37687786],
-                  [-212.62989556, -1369.82898172, -48.73498695],
-                  [-183.42717178, 1408.61463096, -33.89745265],
-                  [-162.57253886, 23.43005181, -1394.36722798],
-                  [-216.76963011, 19.37118754, 1300.13822193],
-                  [-809.20208605, 69.1029987, -1251.60104302],
-                  [-1244.03955901, -866.0843061, -67.02594034],
-                  [-1032.3692107, 811.19178082, 699.69602087],
-                  [-538.82617188, -161.6171875, -1337.34895833]])
+    P1 = np.array([[-4772.38754098, 154.04459016, -204.39081967],
+                   [3525.0346179, -68.64924886, -34.54604833],
+                   [-658.17681729, -4137.60248854, -140.49377865],
+                   [-564.18562092, 4200.29150327, -130.51895425],
+                   [-543.18289474, 18.14736842, -4184.43026316],
+                   [-696.62532808, 15.70209974, 3910.20734908],
+                   [406.65271419, 18.46827992, -4064.61085677],
+                   [559.45926413, -3989.69513798, -174.71879106],
+                   [597.22629169, -3655.54153041, -1662.83257031],
+                   [1519.02616089, -603.82472204, 3290.58469588]])
+
+    P2 = np.array([[-1575.43324607, 58.07787958, -72.69371728],
+                   [1189.53102547, -11.92749837, -23.37687786],
+                   [-212.62989556, -1369.82898172, -48.73498695],
+                   [-183.42717178, 1408.61463096, -33.89745265],
+                   [-162.57253886, 23.43005181, -1394.36722798],
+                   [-216.76963011, 19.37118754, 1300.13822193],
+                   [-809.20208605, 69.1029987, -1251.60104302],
+                   [-1244.03955901, -866.0843061, -67.02594034],
+                   [-1032.3692107, 811.19178082, 699.69602087],
+                   [-538.82617188, -161.6171875, -1337.34895833]])
+
     sc = StandardCalibration(True)
-    sc.acc_zero_g = np.array(
-        [(1189.53102547 + (-1575.43324607)) / 2,
-         (1408.61463096 + (-1369.82898172)) / 2,
-         (1300.13822193 + (-1394.36722798)) / 2])
-    sc.acc_sensitivity = np.array(
-        [2 / (1189.53102547 - (-1575.43324607)),
-         2 / (1408.61463096 - (-1369.82898172)),
-         2 / (1300.13822193 - (-1394.36722798))])
-    V = (V - sc.acc_zero_g) * sc.acc_sensitivity
-    sc._perform_calibration_optimisation(V)
+    sc.calibrate_with_stored_points(P1)
+    sc2 = StandardCalibration(True)
+    sc2.calibrate_with_stored_points(P2)
 
 
 if __name__ == "__main__":

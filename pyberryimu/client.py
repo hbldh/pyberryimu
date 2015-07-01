@@ -208,7 +208,7 @@ class BerryIMUClient(object):
         reg5_value = (
             ('1' if self._gyro_setup.get('enabled_temp', True) else '0') +
             '11' +  # Magnetic resolution selection (hardcoded to high resolution!)
-            LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate', 190)) +
+            LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate', 50)) +
             '00'  # Latch interrupts disabled right.
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, int(reg5_value, 2))

@@ -20,14 +20,19 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import os
+from pyberryimu import version
 
 
 class BerryIMUCalibration(object):
     """Default object for calibrators."""
     
-    def __init__(self):
+    def __init__(self, verbose=True):
         """Constructor for BerryIMUCalibration"""
-        pass
+        self._verbose = verbose
+
+        # BerryIMU settings for the client used for calibration.
+        self.pyberryimu_version = version
+        self.berryimu_settings = None
 
     @classmethod
     def load(cls, doc_path=os.path.expanduser('~/.pyberryimu')):
@@ -37,7 +42,10 @@ class BerryIMUCalibration(object):
         raise NotImplementedError("Base BerryIMUCalibration is non-savable.")
 
     def to_json(self):
-        return {}
+        return {
+            'pyberryimu_version': version,
+            'BerryIMU_settings': self.berryimu_settings,
+        }
 
     def calibrate_accelerometer(self, client):
         """Perform calibration of the BerryIMU accelerometer."""
