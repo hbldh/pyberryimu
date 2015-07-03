@@ -47,11 +47,11 @@ class BerryIMUCalibration(object):
             'BerryIMU_settings': self.berryimu_settings,
         }
 
-    def calibrate_accelerometer(self, client):
+    def calibrate_accelerometer(self, client, **kwargs):
         """Perform calibration of the BerryIMU accelerometer."""
         raise NotImplementedError("Base BerryIMUCalibration is not possible to calibrate.")
 
-    def calibrate_gyroscope(self, client):
+    def calibrate_gyroscope(self, client, **kwargs):
         """Perform calibration of the BerryIMU gyroscope."""
         raise NotImplementedError("Base BerryIMUCalibration is not possible to calibrate.")
 

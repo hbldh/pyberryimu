@@ -33,6 +33,11 @@ from pyberryimu.calibration.base import BerryIMUCalibration
 class StandardCalibration(BerryIMUCalibration):
     """The Standard Calibration object for the PyBerryIMU."""
 
+    # 45 RPM as radians per second.
+    RECORD_PLAYER_45_RPM = (45 / 60) * 2 * np.pi
+    # 33 & 1/3 RPM as radians per second.
+    RECORD_PLAYER_33_3_RPM = ((33 + (1 / 3)) / 60) * 2 * np.pi
+
     def __init__(self, verbose=False):
         """Constructor for StandardCalibration"""
         super(StandardCalibration, self).__init__(verbose)
@@ -47,8 +52,8 @@ class StandardCalibration(BerryIMUCalibration):
 
         # Gyroscope calibration parameters.
         # TODO: Remove default values here after implementation of gyro calibration.
-        self.gyro_zero = np.array([0, 0, 0], 'float')
-        self.gyro_sensitivity = np.array([1, 1, 1], 'float')
+        self.gyro_bias_vector = np.array([0, 0, 0], 'float')
+        self.gyro_scale_factor_vector = np.array([1, 1, 1], 'float')
 
         self.__mid_v = 2 ** 15
         self.__max_v = (2 ** 16) - 1
@@ -72,8 +77,9 @@ class StandardCalibration(BerryIMUCalibration):
 
         # Parse gyroscope calibration values.
         gyro_doc = doc.get('gyroscope', {})
-        out.gyro_zero = np.array(gyro_doc.get('zero', [0, 0, 0]), 'float')
-        out.gyro_sensitivity = np.array(gyro_doc.get('sensitivity', [1, 1, 1]), 'float')
+        out.gyro_bias_vector = np.array(gyro_doc.get('bias', [0, 0, 0]), 'float')
+        out.gyro_scale_factor_vector = np.array(
+            gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
 
         return out
 
@@ -93,16 +99,24 @@ class StandardCalibration(BerryIMUCalibration):
                 'bias': self.acc_bias_vector.tolist()
             },
             'gyro': {
-                'zero': self.gyro_zero.tolist(),
-                'sensitivity': self.gyro_sensitivity.tolist(),
+                'scale_factor': self.gyro_scale_factor_vector.tolist(),
+                'bias': self.gyro_bias_vector.tolist(),
             }
         })
         return doc
 
-    def _vnorm(self, x):
+    # Help methods
+
+    def acc_to_ratio(self, x):
         return (x + self.__mid_v) / self.__max_v
 
-    def calibrate_accelerometer(self, client):
+    @staticmethod
+    def rpm_to_rads_per_sec(rpm_value):
+        return (rpm_value / 60) * 2 * np.pi
+
+    # Accelerometer calibration methods
+
+    def calibrate_accelerometer(self, client, **kwargs):
         """Perform calibration of accelerometer.
 
         Computes the Zero G levels, Sensitivity, Scale factor Matrix and the
@@ -152,33 +166,50 @@ class StandardCalibration(BerryIMUCalibration):
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
 
         """
-        if self._acc_zero_g is not None:
+        if self.acc_scale_factor_matrix is not None:
             raise PyBerryIMUError('This object has already been calibrated!')
 
         self.berryimu_settings = client.get_settings()
         points = self._do_six_point_one_g_calibration(client)
         points += self._add_additional_points(client)
         self._acc_calibration_points = np.array(points)
-        self._perform_calibration_optimisation(
-            self._vnorm(self._acc_calibration_points))
+        self._perform_accelerometer_calibration_optimisation(
+            self.acc_to_ratio(self._acc_calibration_points))
       
-    def calibrate_with_stored_points(self, points):
+    def calibrate_accelerometer_with_stored_points(self, points):
+        """Perform calibration of accelerometer with stored points.
+
+        :param points: Calibration points recorded earlier.
+        :type points: :py:class:`numpy.ndarray`
+
+        """
+        if self.acc_scale_factor_matrix is not None:
+            raise PyBerryIMUError('This object has already been calibrated!')
+
         self._acc_zero_g = np.zeros((3, ), 'float')
         self._acc_sensitivity = np.zeros((3, ), 'float')
         for index in xrange(3):
             this_axis_points = []
             for side in [0, 1]:
-                this_axis_points.append(self._vnorm(points[index * 2 + side, index]))
+                this_axis_points.append(self.acc_to_ratio(points[index * 2 + side, index]))
 
             v_max, v_min = max(this_axis_points), min(this_axis_points)
             self._acc_zero_g[index] = (v_max + v_min) / 2
             v_max = v_max - self._acc_zero_g[index]
             v_min = v_min - self._acc_zero_g[index]
             self._acc_sensitivity[index] = 2 / (v_max - v_min)
-        points = self._vnorm(np.array(points))
-        self._perform_calibration_optimisation(points)
+        points = self.acc_to_ratio(np.array(points))
+        self._perform_accelerometer_calibration_optimisation(points)
 
     def _do_six_point_one_g_calibration(self, client):
+        """Perform six recording of +/- 1g on each accelerometer axis.
+
+        :param client: The BerryIMU communication client.
+        :type client: :py:class:`pyberryimu.client.BerryIMUClient`
+        :return: List of points added.
+        :rtype: list
+
+        """
         points = []
         self._acc_zero_g = np.zeros((3, ), 'float')
         self._acc_sensitivity = np.zeros((3, ), 'float')
@@ -214,7 +245,7 @@ class StandardCalibration(BerryIMUCalibration):
                     acc_values.append(client.read_accelerometer())
 
                 points.append(np.mean(acc_values, axis=0).tolist())
-                this_axis_points.append(self._vnorm(points[-1][index]))
+                this_axis_points.append(self.acc_to_ratio(points[-1][index]))
 
             v_max, v_min = max(this_axis_points), min(this_axis_points)
             self._acc_zero_g[index] = (v_max + v_min) / 2
@@ -254,7 +285,7 @@ class StandardCalibration(BerryIMUCalibration):
                 pass
         return points
 
-    def _perform_calibration_optimisation(self, points):
+    def _perform_accelerometer_calibration_optimisation(self, points):
         """Perform the Gauss-Newton optimisation for parameters.
 
         :param points: The calibration points recorded.
@@ -266,7 +297,8 @@ class StandardCalibration(BerryIMUCalibration):
             raise ValueError('Need at least 9 Measurements for the calibration procedure!')
 
         # Optimisation error function.
-        error_function = lambda M, b, y: np.sum((M.dot((y - b)) ** 2)) - 1
+        def error_function(M_mat, b_vec, y):
+            return np.sum((M_mat.dot((y - b_vec)) ** 2)) - 1
 
         # Method for calculating the Jacobian.
         def _jacobian(M_mat, b_vec, point):
@@ -275,49 +307,49 @@ class StandardCalibration(BerryIMUCalibration):
 
             jac[0] = 2 * (b_vec[0] - point[0]) * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[1] = 2 * (b_vec[1] - point[1]) * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
                     b_vec[2] - point[2])) + 2 * (b_vec[0] - point[0]) * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[2] = 2 * (b_vec[0] - point[0]) * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
                     b_vec[2] - point[2])) + 2 * (b_vec[2] - point[2]) * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[3] = 2 * (b_vec[1] - point[1]) * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[4] = 2 * (b_vec[1] - point[1]) * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
                     b_vec[2] - point[2])) + 2 * (b_vec[2] - point[2]) * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[5] = 2 * (b_vec[2] - point[2]) * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[6] = 2 * M_mat[0, 0] * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[0, 1] * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[0, 2] * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[7] = 2 * M_mat[0, 1] * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[1, 1] * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[1, 2] * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
             jac[8] = 2 * M_mat[0, 2] * (
                 M_mat[0, 0] * (b_vec[0] - point[0]) + M_mat[0, 1] * (b_vec[1] - point[1]) + M_mat[0, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[1, 2] * (
                 M_mat[0, 1] * (b_vec[0] - point[0]) + M_mat[1, 1] * (b_vec[1] - point[1]) + M_mat[1, 2] * (
                     b_vec[2] - point[2])) + 2 * M_mat[2, 2] * (
                 M_mat[0, 2] * (b_vec[0] - point[0]) + M_mat[1, 2] * (b_vec[1] - point[1]) + M_mat[2, 2] * (
-                b_vec[2] - point[2]))
+                    b_vec[2] - point[2]))
 
             return jac
 
@@ -329,7 +361,7 @@ class StandardCalibration(BerryIMUCalibration):
         damping = 0.01    # Damping parameter - has to be less than 1.
         tolerance = 1e-12
         R_prior = 100000
-        nbr_iterations = 2000
+        nbr_iterations = 200
 
         # Initial Guess values of M and b.
         x = np.array([self._acc_sensitivity[0], 0.0, 0.0,
@@ -370,17 +402,95 @@ class StandardCalibration(BerryIMUCalibration):
             last_x = x.copy()
             R_prior = R_post
 
-    def calibrate_gyroscope(self, client):
-        raise NotImplementedError("This has not been implemented yet.")
+    # Gyroscope calibration methods
+
+    def calibrate_gyroscope(self, client, radians_per_sec=None):
+        """Linear Regression model fitting for SI unit conversion of gyroscope data.
+
+        Requires a plane surface rotating with a fixed and known speed
+        (e.g. a vinyl record player) on which the BerryIMU can be placed.
+        The user then positions the BerryIMU so that all rotation is captured
+        by one sensor axis. After six such measurements and a static reading,
+        the scale and offset values are determined by linear regression, s.t.
+        ``g_calib = scale * g_raw + bias``.
+
+        Note that no cross-talk terms are present in this simple gyroscope calibration.
+
+        :param client: The BerryIMU communication client.
+        :type client: :py:class:`pyberryimu.client.BerryIMUClient`
+        :param radians_per_sec: Rotation speed of the calibration plane.
+        :type radians_per_sec: float
+
+        """
+        if radians_per_sec is None:
+            raise PyBerryIMUError("A fixed rotation value in radians per seconds "
+                                  "must be given. See docstring.")
+
+        points = []
+        gyro_zero = np.zeros((3, ), 'float')
+
+        gyro_scale = np.zeros((3, ), 'float')
+        gyro_bias = np.zeros((3, ), 'float')
+
+        # Method for polling until desired axis is oriented as requested.
+        def _wait_for_compliance():
+            keep_waiting = 4
+            while keep_waiting > 0:
+                g = np.array(client.read_gyroscope()) - gyro_zero
+                print(g)
+                norm_g = np.linalg.norm(g)
+                norm_diff = np.abs(np.abs(g[index]) - norm_g) / norm_g
+
+                if norm_diff < 0.01 and cmp(g[index], 0) == side:
+                    keep_waiting -= 1
+                else:
+                    keep_waiting = 4
+                time.sleep(0.25)
+
+        # Record the zero level of the gyros.
+        raw_input('Let the BerryIMU be completely still. Record Zero values by pressing Enter.')
+        gyro_values = []
+        t = time.time()
+        while (time.time() - t) < 5:
+            gyro_values.append(client.read_gyroscope())
+        gyro_zero = np.mean(gyro_values, axis=0)
+
+        axes_names = ['x', 'y', 'z']
+        for index in xrange(3):
+            this_axis_points = []
+            for side in [-1, 1]:
+                print("Position the BerryIMU so that all gyro output is "
+                      "{0} on the {1} gyro axis...".format(
+                          'negative' if side < 0 else 'positive', axes_names[index]))
+                _wait_for_compliance()
+                raw_input('Correct orientation. Start calibration of BerryIMU Gyro {0} '
+                          'axis {1} ({2}) by pressing Enter.'.format(axes_names[index],
+                                                                     'negative' if side < 0 else 'positive',
+                                                                     client.read_gyroscope()))
+                gyro_values = []
+                t = time.time()
+                while (time.time() - t) < 5:
+                    gyro_values.append(client.read_gyroscope())
+
+                points.append(np.mean(gyro_values, axis=0).tolist())
+                this_axis_points.append(self.acc_to_ratio(points[-1][index]))
+
+                x = [min(this_axis_points), gyro_zero[index], max(this_axis_points)]
+                y = [-radians_per_sec, 0, radians_per_sec]
+                gyro_scale[index], gyro_bias[index] = np.polyfit(x, y, 1)
+
+        self.gyro_bias_vector = gyro_bias
+        self.gyro_scale_factor_vector = gyro_scale
 
     def transform_accelerometer_values(self, acc_values):
         # Normalize and then apply the calibration scale matrix and bias.
         converted_g_values = self.acc_scale_factor_matrix.dot(
-            self._vnorm(np.array(acc_values)) - self.acc_bias_vector)
+            self.acc_to_ratio(np.array(acc_values)) - self.acc_bias_vector)
         return tuple(converted_g_values.tolist())
 
     def transform_gyroscope_values(self, gyro_values):
-        return tuple(((gyro_values - self.gyro_zero) * self.gyro_sensitivity).tolist())
+        return tuple((self.gyro_scale_factor_vector * gyro_values) +
+                     self.gyro_bias_vector.tolist())
 
     def transform_magnetometer_values(self, mag_values):
         # TODO: Study magnetometer calibration. Needed? Zero level is already taken care of.

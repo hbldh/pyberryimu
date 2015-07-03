@@ -112,7 +112,7 @@ class BerryIMUClient(object):
 
     @calibration_object.setter
     def calibration_object(self, new_calibration):
-        # TODO: Check if calibration and current client share vital settings.
+        # TODO: Check if calibration and current client share vital settings such as full scales.
         self._calibration_object = new_calibration
 
     def open(self):
@@ -357,7 +357,12 @@ class BerryIMUClient(object):
         :rtype: int
 
         """
-        return self._read(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_L_XM, LSM9DS0.OUT_TEMP_H_XM)
+        value = (self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_L_XM) | (
+            (self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_H_XM) & 0x00001111) << 8))
+        value = value if value < 2048 else value - 4096
+
+        # Convert to degrees Celsius according to data sheet specs: 8 LSB/deg C
+        return value / 8
 
     def read_temperature(self):
         """Method for reading temperature values from the barometric pressure sensor.
