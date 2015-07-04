@@ -33,8 +33,8 @@ classifiers = [
 _version_major = 0
 _version_minor = 3
 _version_patch = 2
-_version_extra = 'dev0'
-#_version_extra = 'a'
+#_version_extra = 'dev0'
+_version_extra = 'a0'
 #_version_extra = ''  # Uncomment this for full releases
 
 # Construct full version string from these.

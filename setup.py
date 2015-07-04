@@ -41,14 +41,8 @@ setup(
             '*',
         ],
     },
-    install_requires=[
-        'smbus-cffi>=0.4.1',
-        'numpy>=1.9.0',
-        # Documentation
-        'Sphinx>=1.2.2',
-        'sphinx_rtd_theme',
-
-    ],
+    install_requires=[line.strip() for line in open("requirements.txt")],
+    test_requirements=[line.strip() for line in open("test_requirements.txt")],
     dependency_links=[],
     ext_modules=[],
     entry_points={
