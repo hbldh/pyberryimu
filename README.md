@@ -1,5 +1,11 @@
 # PyBerryIMU
 
+|  Branch       | Build status    |
+| :------------ | ---------------:|
+| `master`      | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=master)](https://travis-ci.org/hbldh/pyberryimu) |
+| `develop`     | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=develop)](https://travis-ci.org/hbldh/pyberryimu) |
+
+
 I2C communications lib for using [BerryIMU]
 (http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 

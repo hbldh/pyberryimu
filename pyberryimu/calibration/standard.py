@@ -498,16 +498,3 @@ class StandardCalibration(BerryIMUCalibration):
     def transform_magnetometer_values(self, mag_values):
         # TODO: Study magnetometer calibration. Needed? Zero level is already taken care of.
         return mag_values
-
-
-def main():
-
-
-    sc = StandardCalibration(True)
-    sc.calibrate_with_stored_points(P1)
-    sc2 = StandardCalibration(True)
-    sc2.calibrate_with_stored_points(P2)
-
-
-if __name__ == "__main__":
-    main()
