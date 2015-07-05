@@ -23,6 +23,7 @@ import os
 import json
 import time
 
+import six
 import numpy as np
 
 from pyberryimu import version
@@ -189,7 +190,7 @@ class StandardCalibration(BerryIMUCalibration):
 
         self._acc_zero_g = np.zeros((3, ), 'float')
         self._acc_sensitivity = np.zeros((3, ), 'float')
-        for index in xrange(3):
+        for index in six.moves.range(3):
             this_axis_points = []
             for side in [0, 1]:
                 this_axis_points.append(self.acc_to_ratio(points[index * 2 + side, index]))
@@ -230,7 +231,7 @@ class StandardCalibration(BerryIMUCalibration):
                 time.sleep(0.1)
 
         axes_names = ['x', 'y', 'z']
-        for index in xrange(3):
+        for index in six.moves.range(3):
             this_axis_points = []
             for side in [-1, 1]:
                 print('Position BerryIMU {0} axis {1}...'.format(
@@ -375,10 +376,10 @@ class StandardCalibration(BerryIMUCalibration):
         # Jacobian matrix
         J = np.zeros((nbr_points, 9), 'float')
 
-        for n in xrange(nbr_iterations):
+        for n in six.moves.range(nbr_iterations):
             # Calculate the Jacobian at every iteration.
             M, b = optvec_to_M_and_b(x)            
-            for i in xrange(nbr_points):
+            for i in six.moves.range(nbr_points):
                 R[i] = error_function(M, b, points[i, :])
                 J[i, :] = _jacobian(M, b, points[i, :])
 
@@ -459,7 +460,7 @@ class StandardCalibration(BerryIMUCalibration):
         gyro_zero = np.mean(gyro_values, axis=0)
 
         axes_names = ['x', 'y', 'z']
-        for index in xrange(3):
+        for index in six.moves.range(3):
             this_axis_points = []
             for side in [-1, 1]:
                 print("Position the BerryIMU so that all gyro output is "

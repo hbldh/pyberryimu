@@ -19,11 +19,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import six
 from pyberryimu.client import BerryIMUClient
 
 
 def ten_samples_test(client):
-    for k in xrange(10):
+    for k in six.moves.range(10):
         print("Acc: {0}, Gyro: {1}".format(client.read_accelerometer(), client.read_gyroscope()))
 
 
