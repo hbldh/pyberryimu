@@ -65,7 +65,7 @@ class BerryIMUClient(object):
     * 'full_scale': [2, 4, 8, <12>],
     * 'sensor_mode': [<0>, 1, -1]
 
-    Read more about these settings it the
+    Read more about these settings in the
     `LSM9DS0 data sheet <http://ozzmaker.com/wp-content/uploads/2014/12/LSM9DS0.pdf>`_.
 
     For the barometric pressure sensor BMP180, docstring will be written.
@@ -81,9 +81,12 @@ class BerryIMUClient(object):
 
         # Init time settings.
         self._bus_no = bus
-        self._acc_setup = settings.get('accelerometer', {}) if settings is not None else {}
-        self._gyro_setup = settings.get('gyroscope', {}) if settings is not None else {}
-        self._mag_setup = settings.get('magnetometer', {}) if settings is not None else {}
+        self._acc_setup = self._create_accelerometer_settings_dict(
+            settings.get('accelerometer', {}) if settings is not None else {})
+        self._gyro_setup = self._create_gyroscope_settings_dict(
+            settings.get('gyroscope', {}) if settings is not None else {})
+        self._mag_setup = self._create_magnetometer_settings_dict(
+            settings.get('magnetometer', {}) if settings is not None else {})
 
         # BMP180 calibration values.
         self.__ac1 = None
@@ -153,69 +156,102 @@ class BerryIMUClient(object):
 
     # Initialisation methods
 
+    def _create_accelerometer_settings_dict(self, setup_dict):
+        return {
+            'data_rate': setup_dict.get('data_rate', 200),
+            'continuous_update': setup_dict.get('continuous_update', False),
+            'enabled_z': setup_dict.get('enabled_z', True),
+            'enabled_y': setup_dict.get('enabled_y', True),
+            'enabled_x': setup_dict.get('enabled_x', True),
+            'anti_alias': setup_dict.get('anti_alias', 773),
+            'full_scale': setup_dict.get('full_scale', 8),
+            'self_test': setup_dict.get('self_test', 0)
+        }
+
     def _init_accelerometer(self):
         """Initialize the accelerometer according to the settings document sent in."""
         # TODO: Better init handling!
+
         reg1_value = (
-            LSM9DS0.get_accelerometer_data_rate_bits(self._acc_setup.get('data_rate', 200)) +
-            ('0' if self._acc_setup.get('continuous_update', False) else '1') +
-            ('1' if self._acc_setup.get('enabled_z', True) else '0') +
-            ('1' if self._acc_setup.get('enabled_y', True) else '0') +
-            ('1' if self._acc_setup.get('enabled_x', True) else '0')
+            LSM9DS0.get_accelerometer_data_rate_bits(self._acc_setup.get('data_rate')) +
+            ('0' if self._acc_setup.get('continuous_update') else '1') +
+            ('1' if self._acc_setup.get('enabled_z') else '0') +
+            ('1' if self._acc_setup.get('enabled_y') else '0') +
+            ('1' if self._acc_setup.get('enabled_x') else '0')
         )
         # Write data rate, enabled axes and block data update.
         self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM, int(reg1_value, 2))
 
         reg2_value = (
-            LSM9DS0.get_accelerometer_anti_alias_filter_bits(self._acc_setup.get('anti_alias', 773)) +
-            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale', 8)) +
-            LSM9DS0.get_accelerometer_self_test_bits(self._acc_setup.get('self_test', 0)) +
+            LSM9DS0.get_accelerometer_anti_alias_filter_bits(self._acc_setup.get('anti_alias')) +
+            LSM9DS0.get_accelerometer_full_scale_bits(self._acc_setup.get('full_scale')) +
+            LSM9DS0.get_accelerometer_self_test_bits(self._acc_setup.get('self_test')) +
             '0'  # SPI Serial Interface Mode selection
         )
         # Write anti-alias filter bandwidth, acceleration full scale and self-test mode.
         self._write(LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, int(reg2_value, 2))
+
+    def _create_gyroscope_settings_dict(self, setup_dict):
+        return {
+            'data_rate': setup_dict.get('data_rate', 190),
+            'bandwidth_level': setup_dict.get('bandwidth_level', 0),
+            'powerdown_mode': setup_dict.get('powerdown_mode', False),
+            'enabled_z': setup_dict.get('enabled_z', True),
+            'enabled_y': setup_dict.get('enabled_y', True),
+            'enabled_x': setup_dict.get('enabled_x', True),
+            'continuous_update': setup_dict.get('continuous_update', False),
+            'little_endian': setup_dict.get('little_endian', False),
+            'full_scale': setup_dict.get('full_scale', 500),
+            'self_test': setup_dict.get('self_test', 0)
+        }
 
     def _init_gyroscope(self):
         """Initialize the gyroscope according to the settings document sent in."""
         # TODO: Better init handling!
 
         reg1_value = (
-            LSM9DS0.get_gyroscope_data_rate_bits(self._gyro_setup.get('data_rate', 190)) +
-            LSM9DS0.get_gyroscope_bandwidth_bits(self._gyro_setup.get('bandwidth_level', 0)) +
-            ('0' if self._gyro_setup.get('powerdown_mode', False) else '1') +
-            ('1' if self._gyro_setup.get('enabled_z', True) else '0') +
-            ('1' if self._gyro_setup.get('enabled_y', True) else '0') +
-            ('1' if self._gyro_setup.get('enabled_x', True) else '0')
+            LSM9DS0.get_gyroscope_data_rate_bits(self._gyro_setup.get('data_rate')) +
+            LSM9DS0.get_gyroscope_bandwidth_bits(self._gyro_setup.get('bandwidth_level')) +
+            ('0' if self._gyro_setup.get('powerdown_mode') else '1') +
+            ('1' if self._gyro_setup.get('enabled_z') else '0') +
+            ('1' if self._gyro_setup.get('enabled_y') else '0') +
+            ('1' if self._gyro_setup.get('enabled_x') else '0')
         )
         self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, int(reg1_value, 2))
 
         # TODO: Add setup for high-pass filter, LSM9DS0.CTRL_REG2_G and LSM9DS0.CTRL_REG5_G
 
         reg4_value = (
-            ('0' if self._gyro_setup.get('continuous_update', False) else '1') +
-            ('1' if self._gyro_setup.get('little_endian', False) else '0') +
-            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale', 500)) +
+            ('0' if self._gyro_setup.get('continuous_update') else '1') +
+            ('1' if self._gyro_setup.get('little_endian') else '0') +
+            LSM9DS0.get_gyroscope_full_scale_bits(self._gyro_setup.get('full_scale')) +
             '0' +  # Unused bit.
-            LSM9DS0.get_gyroscope_self_test_bits(self._gyro_setup.get('self_test', 0)) +
+            LSM9DS0.get_gyroscope_self_test_bits(self._gyro_setup.get('self_test')) +
             '0'  # SPI Serial Interface Mode selection
         )
-        self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, int(reg4_value,2))
+        self._write(LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, int(reg4_value, 2))
+
+    def _create_magnetometer_settings_dict(self, setup_dict):
+        return {
+            'enabled_temp': setup_dict.get('enabled_temp', True),
+            'data_rate': setup_dict.get('data_rate', 50),
+            'full_scale': setup_dict.get('full_scale', 12),
+            'sensor_mode': setup_dict.get('sensor_mode', 0),
+        }
 
     def _init_magnetometer(self):
         """Initialize the magnetometer according to the settings document sent in."""
-        # TODO: Better init handling!
-
         reg5_value = (
-            ('1' if self._gyro_setup.get('enabled_temp', True) else '0') +
+            ('1' if self._gyro_setup.get('enabled_temp') else '0') +
             '11' +  # Magnetic resolution selection (hardcoded to high resolution!)
-            LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate', 50)) +
+            LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate')) +
             '00'  # Latch interrupts disabled right.
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, int(reg5_value, 2))
 
         reg6_value = (
             '0' +  # Unused bits
-            LSM9DS0.get_magnetometer_full_scale_bits(self._mag_setup.get('full_scale', 12)) +
+            LSM9DS0.get_magnetometer_full_scale_bits(self._mag_setup.get('full_scale')) +
             '00000'  # Unused bits
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM, int(reg6_value, 2))
@@ -225,7 +261,7 @@ class BerryIMUClient(object):
             '0' +  # Filtered acceleration data selection bypassed.
             '00' +  # Unused bits
             '0' +  # Magnetic data low-power mode disabled.
-            LSM9DS0.get_magnetometer_sensor_mode_bits(self._mag_setup.get('sensor_mode', 0))
+            LSM9DS0.get_magnetometer_sensor_mode_bits(self._mag_setup.get('sensor_mode'))
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, int(reg7_value, 2))
 
@@ -353,12 +389,15 @@ class BerryIMUClient(object):
     def read_temperature_LSM9DS0(self):
         """Method for reading temperature values from the LSM9DS0 chip.
 
+        Temperature value is stored as a 12-bit, right justified value, hence the
+        bit mask on the high bit.
+
         :return: Temperature value.
         :rtype: int
 
         """
         value = (self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_L_XM) | (
-            (self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_H_XM) & 0x00001111) << 8))
+            (self.bus.read_byte_data(LSM9DS0.MAG_ADDRESS, LSM9DS0.OUT_TEMP_H_XM) & 0b00001111) << 8))
         value = value if value < 2048 else value - 4096
 
         # Convert to degrees Celsius according to data sheet specs: 8 LSB/deg C

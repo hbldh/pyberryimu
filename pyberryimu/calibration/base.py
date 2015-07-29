@@ -24,8 +24,12 @@ from pyberryimu import version
 
 
 class BerryIMUCalibration(object):
-    """Default object for calibrators."""
-    
+    """Default object for calibrators.
+
+    Returns raw integer output from the BerryIMU.
+
+    """
+
     def __init__(self, verbose=True):
         """Constructor for BerryIMUCalibration"""
         self._verbose = verbose
@@ -53,6 +57,10 @@ class BerryIMUCalibration(object):
 
     def calibrate_gyroscope(self, client, **kwargs):
         """Perform calibration of the BerryIMU gyroscope."""
+        raise NotImplementedError("Base BerryIMUCalibration is not possible to calibrate.")
+
+    def calibrate_magnetometer(self, client, **kwargs):
+        """Perform calibration of the BerryIMU magnetometer."""
         raise NotImplementedError("Base BerryIMUCalibration is not possible to calibrate.")
 
     def transform_accelerometer_values(self, acc_values):
