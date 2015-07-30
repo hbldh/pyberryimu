@@ -86,21 +86,19 @@ class StandardCalibration(BerryIMUCalibration):
 
         # Parse accelerometer calibration values.
         acc_doc = doc.get('accelerometer', {})
+        out.acc_bias_vector = np.array(acc_doc.get('bias', [0, 0, 0]), 'float')
         out.acc_scale_factor_matrix = np.reshape(
             np.array(acc_doc.get('scale_factor', np.eye(3).flatten()), 'float'), (3, 3))
-        out.acc_bias_vector = np.array(acc_doc.get('bias', [0, 0, 0]), 'float')
 
         # Parse gyroscope calibration values.
         gyro_doc = doc.get('gyroscope', {})
         out.gyro_bias_vector = np.array(gyro_doc.get('bias', [0, 0, 0]), 'float')
-        out.gyro_scale_factor_vector = np.array(
-            gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
+        out.gyro_scale_factor_vector = np.array(gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
 
         # Parse magnetometer calibration values.
-        gyro_doc = doc.get('magnetometer', {})
-        out.gyro_bias_vector = np.array(gyro_doc.get('bias', [0, 0, 0]), 'float')
-        out.gyro_scale_factor_vector = np.array(
-            gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
+        mag_doc = doc.get('magnetometer', {})
+        out.mag_bias_vector = np.array(mag_doc.get('bias', [0, 0, 0]), 'float')
+        out.mag_scale_factor_vector = np.array(mag_doc.get('scale_factor', [1, 1, 1]), 'float')
 
         return out
 
