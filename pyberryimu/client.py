@@ -242,7 +242,7 @@ class BerryIMUClient(object):
     def _init_magnetometer(self):
         """Initialize the magnetometer according to the settings document sent in."""
         reg5_value = (
-            ('1' if self._gyro_setup.get('enabled_temp') else '0') +
+            ('1' if self._mag_setup.get('enabled_temp') else '0') +
             '11' +  # Magnetic resolution selection (hardcoded to high resolution!)
             LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate')) +
             '00'  # Latch interrupts disabled right.

@@ -34,7 +34,7 @@ _version_major = 0
 _version_minor = 3
 _version_patch = 2
 #_version_extra = 'dev0'
-_version_extra = 'a2'
+_version_extra = 'b0'
 #_version_extra = ''  # Uncomment this for full releases
 
 # Construct full version string from these.

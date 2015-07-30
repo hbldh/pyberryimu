@@ -501,13 +501,18 @@ class StandardCalibration(BerryIMUCalibration):
         self.gyro_scale_factor_vector = gyro_scale
 
     def calibrate_magnetometer(self, client, **kwargs):
-        """Calibrate Magnetometer. Right now, nothing is done.
+        """Calibrate Magnetometer. Right now only datasheet values are used.
 
         :param client: The BerryIMU communication client.
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
 
         """
-        pass
+        self.mag_scale_factor_vector = np.ones((3, 1), 'float') * {
+            2: 0.08 / 1000.,
+            4: 0.16 / 1000.,
+            8: 0.32 / 1000.,
+            12: 0.48 / 1000.
+        }.get(client.get_settings().get('magnetometer').get('full_scale'))
 
     def transform_accelerometer_values(self, acc_values):
         # Normalize and then apply the calibration scale matrix and bias.
@@ -516,9 +521,9 @@ class StandardCalibration(BerryIMUCalibration):
         return tuple(converted_g_values.tolist())
 
     def transform_gyroscope_values(self, gyro_values):
-        return tuple((self.gyro_scale_factor_vector * gyro_values) +
-                     self.gyro_bias_vector.tolist())
+        return tuple(((self.gyro_scale_factor_vector * gyro_values) +
+                      self.gyro_bias_vector).tolist())
 
     def transform_magnetometer_values(self, mag_values):
-        # TODO: Study magnetometer calibration. Needed? Zero level is already taken care of.
-        return mag_values
+        return tuple(((self.mag_scale_factor_vector * mag_values) +
+                      self.mag_bias_vector).tolist())
