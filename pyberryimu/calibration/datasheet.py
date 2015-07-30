@@ -19,7 +19,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import os
 from pyberryimu import version
 
 
@@ -42,6 +41,16 @@ class DataSheetCalibration(object):
         self._acc_unit_per_lsb = None
         self._gyro_unit_per_lsb = None
         self._mag_unit_per_lsb = None
+
+    def __str__(self):
+        return "DataSheetCalibration: Acc: {0}, Gyro: {1}, Mag: {2}".format(
+            self._acc_unit_per_lsb is not None,
+            self._gyro_unit_per_lsb is not None,
+            self._mag_unit_per_lsb is not None
+        )
+
+    def __repr__(self):
+        return str(self)
 
     def to_json(self):
         return {
@@ -77,11 +86,11 @@ class DataSheetCalibration(object):
         }.get(client.get_settings().get('magnetometer').get('full_scale'))
 
     def transform_accelerometer_values(self, acc_values):
-        return tuple([(a / self._acc_unit_per_lsb) for a in acc_values])
+        return tuple([(a * self._acc_unit_per_lsb) for a in acc_values])
 
     def transform_gyroscope_values(self, gyro_values):
-        return tuple([(g / self._gyro_unit_per_lsb) for g in gyro_values])
+        return tuple([(g * self._gyro_unit_per_lsb) for g in gyro_values])
 
     def transform_magnetometer_values(self, mag_values):
-        return tuple([(m / self._mag_unit_per_lsb) for m in mag_values])
+        return tuple([(m * self._mag_unit_per_lsb) for m in mag_values])
 

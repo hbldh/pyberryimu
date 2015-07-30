@@ -42,7 +42,6 @@ setup(
         ],
     },
     install_requires=[line.strip() for line in open("requirements.txt")],
-    test_requirements=[line.strip() for line in open("test_requirements.txt")],
     dependency_links=[],
     ext_modules=[],
     entry_points={

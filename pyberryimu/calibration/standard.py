@@ -49,16 +49,30 @@ class StandardCalibration(BerryIMUCalibration):
         self._acc_calibration_points = None
         self._acc_calibration_errors = None
 
-        self.acc_scale_factor_matrix = None
         self.acc_bias_vector = None
+        self.acc_scale_factor_matrix = None
 
         # Gyroscope calibration parameters.
         # TODO: Remove default values here after implementation of gyro calibration.
         self.gyro_bias_vector = np.array([0, 0, 0], 'float')
         self.gyro_scale_factor_vector = np.array([1, 1, 1], 'float')
 
+        # Magnetometer calibration parameters.
+        self.mag_bias_vector = np.array([0, 0, 0], 'float')
+        self.mag_scale_factor_vector = np.array([1, 1, 1], 'float')
+
         self.__mid_v = 2 ** 15
         self.__max_v = (2 ** 16) - 1
+
+    def __str__(self):
+        return "StandardCalibration: Acc: {0}, Gyro: {1}, Mag: {2}".format(
+            self.acc_bias_vector is not None,
+            self.gyro_bias_vector is not None,
+            self.mag_bias_vector is not None
+        )
+
+    def __repr__(self):
+        return str(self)
 
     @classmethod
     def load(cls, doc_path=os.path.expanduser('~/.pyberryimu')):
@@ -485,6 +499,15 @@ class StandardCalibration(BerryIMUCalibration):
 
         self.gyro_bias_vector = gyro_bias
         self.gyro_scale_factor_vector = gyro_scale
+
+    def calibrate_magnetometer(self, client, **kwargs):
+        """Calibrate Magnetometer. Right now, nothing is done.
+
+        :param client: The BerryIMU communication client.
+        :type client: :py:class:`pyberryimu.client.BerryIMUClient`
+
+        """
+        pass
 
     def transform_accelerometer_values(self, acc_values):
         # Normalize and then apply the calibration scale matrix and bias.
