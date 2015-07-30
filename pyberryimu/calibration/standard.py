@@ -53,13 +53,12 @@ class StandardCalibration(BerryIMUCalibration):
         self.acc_scale_factor_matrix = None
 
         # Gyroscope calibration parameters.
-        # TODO: Remove default values here after implementation of gyro calibration.
-        self.gyro_bias_vector = np.array([0, 0, 0], 'float')
-        self.gyro_scale_factor_vector = np.array([1, 1, 1], 'float')
+        self.gyro_bias_vector = None
+        self.gyro_scale_factor_vector = None
 
         # Magnetometer calibration parameters.
-        self.mag_bias_vector = np.array([0, 0, 0], 'float')
-        self.mag_scale_factor_vector = np.array([1, 1, 1], 'float')
+        self.mag_bias_vector = None
+        self.mag_scale_factor_vector = None
 
         self.__mid_v = 2 ** 15
         self.__max_v = (2 ** 16) - 1
@@ -97,6 +96,12 @@ class StandardCalibration(BerryIMUCalibration):
         out.gyro_scale_factor_vector = np.array(
             gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
 
+        # Parse magnetometer calibration values.
+        gyro_doc = doc.get('magnetometer', {})
+        out.gyro_bias_vector = np.array(gyro_doc.get('bias', [0, 0, 0]), 'float')
+        out.gyro_scale_factor_vector = np.array(
+            gyro_doc.get('scale_factor', [1, 1, 1]), 'float')
+
         return out
 
     def save(self, save_path=os.path.expanduser('~/.pyberryimu')):
@@ -117,6 +122,10 @@ class StandardCalibration(BerryIMUCalibration):
             'gyro': {
                 'scale_factor': self.gyro_scale_factor_vector.tolist(),
                 'bias': self.gyro_bias_vector.tolist(),
+            },
+            'magnetometer': {
+                'scale_factor': self.mag_scale_factor_vector.tolist(),
+                'bias': self.mag_bias_vector.tolist()
             }
         })
         return doc
@@ -501,13 +510,40 @@ class StandardCalibration(BerryIMUCalibration):
         self.gyro_scale_factor_vector = gyro_scale
 
     def calibrate_magnetometer(self, client, **kwargs):
-        """Calibrate Magnetometer. Right now only datasheet values are used.
+        """Calibrate Magnetometer. Right now only data sheet values are used.
 
         :param client: The BerryIMU communication client.
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
 
         """
-        self.mag_scale_factor_vector = np.ones((3, 1), 'float') * {
+        self.set_datasheet_values_for_magnetometer(client)
+
+    # Data sheet values setters
+
+    def set_datasheet_values_for_accelerometer(self, client):
+        """Sets data sheet values for transforming BerryIMU accelerometer data to SI Units."""
+        self.acc_bias_vector = np.zeros((3, ), 'float')
+        self.acc_scale_factor_matrix = np.eye(3) * {
+            2: 0.061 / 1000.,
+            4: 0.122 / 1000.,
+            6: 0.183 / 1000.,
+            8: 0.244 / 1000.,
+            16: 0.732 / 1000.
+        }.get(client.get_settings().get('accelerometer').get('full_scale'))
+
+    def set_datasheet_values_for_gyroscope(self, client):
+        """Sets data sheet values for transforming BerryIMU gyroscope data to SI Units."""
+        self.gyro_bias_vector = np.zeros((3, ), 'float')
+        self.gyro_scale_factor_vector = np.ones((3, ), 'float') * {
+            245: 8.75 / 1000.,
+            500: 17.50 / 1000.,
+            2000: 70 / 1000.,
+        }.get(client.get_settings().get('gyroscope').get('full_scale'))
+
+    def set_datasheet_values_for_magnetometer(self, client):
+        """Sets data sheet values for transforming BerryIMU magnetometer data to SI Units."""
+        self.mag_bias_vector = np.zeros((3, ), 'float')
+        self.mag_scale_factor_vector = np.ones((3, ), 'float') * {
             2: 0.08 / 1000.,
             4: 0.16 / 1000.,
             8: 0.32 / 1000.,
