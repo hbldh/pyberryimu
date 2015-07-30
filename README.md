@@ -3,6 +3,11 @@
 I2C communications lib for using [BerryIMU]
 (http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 
+|  Branch       | Build status     |
+| :------------ | ---------------: |
+| `master`      | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=master)](https://travis-ci.org/hbldh/pyberryimu) |
+| `develop`     | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=develop)](https://travis-ci.org/hbldh/pyberryimu) |
+
 **This library uses and includes several snippets of code from the 
 [Official BerryIMU repository](http://github.com/mwilliams03/BerryIMU).** 
 
@@ -10,10 +15,9 @@ I2C communications lib for using [BerryIMU]
 
 #### Required Raspbian packages
 - build-essential
+- python-dev
 - libi2c-dev
 - i2c-tools
-- python-dev
-- libffi-dev
 
 After the package dependencies above are installed, PyBerryIMU can be installed with pip: 
 
@@ -71,8 +75,9 @@ See the example in [pyberryimu/sample/recorder.py]
 (https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/recorder.py)
 
 > Note that the maximum frequency is about 100 Hz for reading from all three IMU sensors 
-> (accelerometer, gyroscope and magnetometer). When adding pressure readings it drops to 
-> about 10 Hz due to the fact that one has to wait during pressure and temperature reading.
+> (accelerometer, gyroscope and magnetometer) on a Raspberry Pi 2. When adding 
+> pressure readings it drops to about 10 Hz due to the fact that one has to wait 
+> during pressure and temperature reading.
 > Run max frequency test script [pyberryimu/sample/max_freq_test.py]
 > (https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/max_freq_test.py) to
 > get a more complete picture of maximal frequencies.

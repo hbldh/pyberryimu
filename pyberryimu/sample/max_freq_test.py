@@ -20,62 +20,63 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import time
+import six
 from pyberryimu.client import BerryIMUClient
 
 
 def max_freq_test(client, n=1000):
     t = time.time()
     acc_data = []
-    for k in xrange(n):
+    for k in six.moves.range(n):
         acc_data.append(client.read_accelerometer())
     elapsed = time.time() - t
     print("Max Accelerometer read frequency: {0:.2f} Hz".format(n / elapsed))
 
     t = time.time()
     gyro_data = []
-    for k in xrange(n):
+    for k in six.moves.range(n):
         gyro_data.append(client.read_gyroscope())
     elapsed = time.time() - t
     print("Max Gyroscope read frequency: {0:.2f} Hz".format(n / elapsed))
 
     t = time.time()
     mag_data = []
-    for k in xrange(n):
+    for k in six.moves.range(n):
         mag_data.append(client.read_magnetometer())
     elapsed = time.time() - t
     print("Max Magnetometer read frequency: {0:.2f} Hz".format(n / elapsed))
 
     t = time.time()
     data = []
-    for k in xrange(n):
+    for k in six.moves.range(n):
         data.append((client.read_accelerometer(), client.read_gyroscope()))
     elapsed = time.time() - t
     print("Max Acc + Gyro read frequency: {0:.2f} Hz".format(n / elapsed))
 
     t = time.time()
     data = []
-    for k in xrange(n):
+    for k in six.moves.range(n):
         data.append((client.read_accelerometer(), client.read_gyroscope(), client.read_magnetometer()))
     elapsed = time.time() - t
     print("Max Acc + Gyro + Mag read frequency: {0:.2f} Hz".format(n / elapsed))
 
     t = time.time()
     data = []
-    for k in xrange(n // 10):
+    for k in six.moves.range(n // 10):
         data.append(client.read_pressure())
     elapsed = time.time() - t
     print("Max Pressure read frequency: {0:.2f} Hz".format((n // 10) / elapsed))
 
     t = time.time()
     data = []
-    for k in xrange(n // 10):
+    for k in six.moves.range(n // 10):
         data.append((client.read_pressure(), client.read_temperature()))
     elapsed = time.time() - t
     print("Max Pressure + Temperature read frequency: {0:.2f} Hz".format((n // 10) / elapsed))
 
     t = time.time()
     data = []
-    for k in xrange(n // 10):
+    for k in six.moves.range(n // 10):
         data.append((client.read_accelerometer(), client.read_gyroscope(), client.read_magnetometer(),
                      client.read_pressure(), client.read_temperature()))
     elapsed = time.time() - t
