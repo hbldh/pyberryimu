@@ -13,5 +13,4 @@ before_install:
   - sudo apt-get install -y build-essential libi2c-dev i2c-tools python-dev
 install:
   - "pip install -r requirements.txt"
-  - "pip install -r test_requirements.txt"
 script: nosetests tests
