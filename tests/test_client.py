@@ -19,7 +19,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import unittest
 from mock import Mock, patch
 
 from pyberryimu.sensors import BMP180, LSM9DS0
@@ -97,7 +96,7 @@ class TestClient(object):
 
     def test_correct_acc_data_rate_applied(self):
         """Test that Accelerometer data rates are written correctly."""
-        for s_val, binstring in LSM9DS0._TABLE_72.iteritems():
+        for s_val, binstring in LSM9DS0._TABLE_72.items():
             yield (self._test_bits_written, 'accelerometer', 'data_rate',
                    LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG1_XM, 0b11110000, 4, s_val, binstring)
 
@@ -127,18 +126,18 @@ class TestClient(object):
 
     def test_correct_acc_antialias_applied(self):
         """Test that Accelerometer settings are written correctly."""
-        for s_val, binstring in LSM9DS0._TABLE_75.iteritems():
+        for s_val, binstring in LSM9DS0._TABLE_75.items():
             yield (self._test_bits_written, 'accelerometer', 'anti_alias',
                    LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, 0b11000000, 6, s_val, binstring)
 
     def test_correct_acc_full_scale_applied(self):
         """Test that Accelerometer settings are written correctly."""
-        for s_val, binstring in LSM9DS0._TABLE_76.iteritems():
+        for s_val, binstring in LSM9DS0._TABLE_76.items():
             yield (self._test_bits_written, 'accelerometer', 'full_scale',
                    LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, 0b00111000, 3, s_val, binstring)
 
     def test_correct_acc_self_test_applied(self):
         """Test that Accelerometer settings are written correctly."""
-        for s_val, binstring in LSM9DS0._TABLE_77.iteritems():
+        for s_val, binstring in LSM9DS0._TABLE_77.items():
             yield (self._test_bits_written, 'accelerometer', 'self_test',
                    LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, 0b00000110, 1, s_val, binstring)
