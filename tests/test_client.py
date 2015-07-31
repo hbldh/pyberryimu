@@ -142,3 +142,102 @@ class TestClient(object):
         for s_val, binstring in LSM9DS0._TABLE_77.items():
             yield (self._test_bits_written, 'accelerometer', 'self_test',
                    LSM9DS0.ACC_ADDRESS, LSM9DS0.CTRL_REG2_XM, 0b00000110, 1, s_val, binstring)
+
+    # Gyroscope init tests.
+    def test_correct_gyro_data_rate_applied(self):
+        """Test that Gyroscope settings are written correctly #1."""
+        for s_val, binstring in LSM9DS0._TABLE_21_1.items():
+            yield (self._test_bits_written, 'gyroscope', 'data_rate',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b11000000, 6, s_val, binstring)
+
+    def test_correct_gyro_bandwidth_applied(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(0, '00'), (1, '01'), (2, '10'), (3, '11')]:
+            yield (self._test_bits_written, 'gyroscope', 'bandwidth_level',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00110000, 4, s_val, binstring)
+
+    def test_correct_gyro_powerdown_mode(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(True, '0'), (False, '1')]:
+            yield (self._test_bits_written, 'gyroscope', 'powerdown_mode',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00001000, 3, s_val, binstring)
+
+    def test_correct_gyro_cont_update(self):
+        """Test that Gyroscope continuous update written correctly."""
+        for s_val, binstring in [(True, '0'), (False, '1')]:
+            yield (self._test_bits_written, 'gyroscope', 'continuous_update',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b10000000, 7, s_val, binstring)
+
+    def test_correct_gyro_le(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'gyroscope', 'little_endian',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b01000000, 6, s_val, binstring)
+
+    def test_correct_gyro_enabled_z(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'gyroscope', 'enabled_z',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00000100, 2, s_val, binstring)
+
+    def test_correct_gyro_enabled_y(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'gyroscope', 'enabled_y',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00000010, 1, s_val, binstring)
+
+    def test_correct_gyro_enabled_x(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'gyroscope', 'enabled_x',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG1_G, 0b00000001, 0, s_val, binstring)
+
+    def test_correct_gyro_full_scale_applied(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in LSM9DS0._TABLE_30.items():
+            yield (self._test_bits_written, 'gyroscope', 'full_scale',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b00110000, 4, s_val, binstring)
+
+    def test_correct_gyro_self_test_applied(self):
+        """Test that Gyroscope settings are written correctly."""
+        for s_val, binstring in LSM9DS0._TABLE_31.items():
+            yield (self._test_bits_written, 'gyroscope', 'self_test',
+                   LSM9DS0.GYR_ADDRESS, LSM9DS0.CTRL_REG4_G, 0b00000110, 1, s_val, binstring)
+
+    # Magnetometer tests
+
+    def test_correct_mag_data_rate_applied(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in LSM9DS0._TABLE_84.items():
+            yield (self._test_bits_written, 'magnetometer', 'data_rate',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, 0b00011100, 2, s_val, binstring)
+
+    def test_correct_mag_enabled_temp(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'magnetometer', 'enabled_temp',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, 0b10000000, 7, s_val, binstring)
+
+    def test_correct_mag_full_scale_applied(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in LSM9DS0._TABLE_87.items():
+            yield (self._test_bits_written, 'magnetometer', 'full_scale',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG6_XM, 0b01100000, 5, s_val, binstring)
+
+    def test_correct_mag_sensor_mode_applied(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in LSM9DS0._TABLE_90.items():
+            yield (self._test_bits_written, 'magnetometer', 'sensor_mode',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, 0b01100011, 0, s_val, binstring)
+
+    def test_correct_mag_lowpower_mode(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in [(True, '1'), (False, '0')]:
+            yield (self._test_bits_written, 'magnetometer', 'lowpower_mode',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, 0b00000100, 2, s_val, binstring)
+
+    def test_correct_mag_high_resolution(self):
+        """Test that Magnetometer settings are written correctly."""
+        for s_val, binstring in [(True, '11'), (False, '00')]:
+            yield (self._test_bits_written, 'magnetometer', 'high_resolution',
+                   LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG5_XM, 0b01100000, 5, s_val, binstring)
