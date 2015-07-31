@@ -18,6 +18,7 @@ I2C communications lib for using [BerryIMU]
 - python-dev
 - libi2c-dev
 - i2c-tools
+- libffi-dev
 
 After the package dependencies above are installed, PyBerryIMU can be installed with pip: 
 
