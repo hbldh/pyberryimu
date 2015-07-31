@@ -75,10 +75,11 @@ def create_device(busnum=1, settings=None):
         from pyberryimu.client import BerryIMUClient
         client = BerryIMUClient(busnum, settings)
         # Write factory calibration data for BMP180 sensor.
-        for i, value in enumerate(xrange(23)):
+        for i, value in enumerate(range(23)):
             mockbus._read.setdefault(BMP180.ADDRESS, {}).setdefault(
                 BMP180.CALIB_DATA_REG + i, []).append(value)
         return client, smbus, mockbus
+
 
 class TestClient(object):
 
