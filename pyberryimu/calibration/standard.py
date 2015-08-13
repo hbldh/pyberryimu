@@ -35,9 +35,9 @@ class StandardCalibration(BerryIMUCalibration):
     """The Standard Calibration object for the PyBerryIMU."""
 
     # 45 RPM as radians per second.
-    RECORD_PLAYER_45_RPM = (45 / 60) * 2 * np.pi
+    RECORD_PLAYER_45_RPM = 45. * 6 #(45 / 60) * 2 * np.pi
     # 33 & 1/3 RPM as radians per second.
-    RECORD_PLAYER_33_3_RPM = ((33 + (1 / 3)) / 60) * 2 * np.pi
+    RECORD_PLAYER_33_3_RPM = (33. + 1./3) * 6 # ((33 + (1 / 3)) / 60) * 2 * np.pi
 
     def __init__(self, verbose=False):
         """Constructor for StandardCalibration"""
@@ -465,8 +465,8 @@ class StandardCalibration(BerryIMUCalibration):
                 print(g)
                 norm_g = np.linalg.norm(g)
                 norm_diff = np.abs(np.abs(g[index]) - norm_g) / norm_g
-
-                if norm_diff < 0.01 and cmp(g[index], 0) == side:
+		
+                if norm_diff < 1e-3 and cmp(g[index], 0) == side:
                     keep_waiting -= 1
                 else:
                     keep_waiting = 4
@@ -498,13 +498,16 @@ class StandardCalibration(BerryIMUCalibration):
                     gyro_values.append(client.read_gyroscope())
 
                 points.append(np.mean(gyro_values, axis=0).tolist())
-                this_axis_points.append(self.acc_to_ratio(points[-1][index]))
+                #this_axis_points.append(self.acc_to_ratio(points[-1][index]))
+		this_axis_points.append(points[-1][index])		
 
                 x = [min(this_axis_points), gyro_zero[index], max(this_axis_points)]
                 y = [-radians_per_sec, 0, radians_per_sec]
                 gyro_scale[index], gyro_bias[index] = np.polyfit(x, y, 1)
 
-        self.gyro_bias_vector = gyro_bias
+        self.gyro_zero = gyro_zero
+	self.gyro_calibration_points = points
+	self.gyro_bias_vector = gyro_bias
         self.gyro_scale_factor_vector = gyro_scale
 
     def calibrate_magnetometer(self, client, **kwargs):
