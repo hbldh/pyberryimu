@@ -32,6 +32,7 @@ class BerryIMUDataContainer(object):
 
     def __init__(self, start_time, client_settings, calibration_parameters=None):
 
+        self.recording_name = None
         self.pyberryimu_version = version
 
         self.start_time = start_time
@@ -108,6 +109,7 @@ class BerryIMUDataContainer(object):
 
     def to_json(self):
         return {
+            'name': self.recording_name,
             'recorded': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
             'client_settings': self.client_settings,
             'calibration_parameters': self.calibration_parameters,
@@ -125,6 +127,7 @@ class BerryIMUDataContainer(object):
     def from_json(cls, doc):
         out = cls(datetime.datetime.strptime(doc.get('recorded'), '%Y-%m-%d %H:%M:%S'),
             doc.get('client_settings'), doc.get('calibration_parameters'))
+        out.recording_name = doc.get('name')
         out.pyberryimu_version = doc.get('pyberryimu_version', version)
 
         out.timestamps = doc.get('data', {}).get('timestamps')

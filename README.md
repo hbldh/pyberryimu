@@ -18,6 +18,7 @@ I2C communications lib for using [BerryIMU]
 - python-dev
 - libi2c-dev
 - i2c-tools
+- libffi-dev
 
 After the package dependencies above are installed, PyBerryIMU can be installed with pip: 
 
@@ -84,6 +85,29 @@ See the example in [pyberryimu/sample/recorder.py]
 
 ### Calibration
 
+#### Using data sheet values
+
+One can skip calibration procedures and just use the general conversion values from the
+sensors data sheet instead of calibrating, but the readings will most probably be
+less accurate.
+
+```python
+from pyberryimu.client import BerryIMUClient
+from pyberryimu.calibration.standard import StandardCalibration
+
+sc = StandardCalibration.load()
+c = BerryIMUClient(bus=1)
+c.open()
+sc.set_datasheet_values_for_accelerometer(c)
+sc.set_datasheet_values_for_gyroscope(c)
+sc.set_datasheet_values_for_magnetometer(c)
+c.calibration_object = sc
+```
+
+This will yield accelerometer output in the unit `g`, 
+gyroscope output in unit `degrees/s` and magnetometer output in unit `gauss`.
+
+#### Accelerometer
 Calibration of accelerometer is performed using the method described in 
 [Frosio, I.; Pedersini, F.; Alberto Borghese, N., 
 "Autocalibration of MEMS Accelerometers," 
@@ -122,7 +146,37 @@ with BerryIMUClient(bus=1) as c:
     c.read_accelerometer()
 ```
 
-Calibration of gyroscope and magnetometer are not implemented yet.
+#### Gyroscope
+
+The gyroscope is somewhat trickier to calibrate, because it needs a rotating 
+plane with a known angular velocity. The calibration consists of the collection
+seven data points: one static and two for each axis where the sensor is rotated in 
+its negative and its positive direction. Using three points per axis, a linear 
+regression model ```ax + b``` is fitted and used for transforming raw readings to output
+in either degrees per second or radians per second, depending which angular velocity unit 
+that is given at calibraion time.
+
+Calibration of gyroscope can be done using a regular vinyl record player, provided one 
+takes some care to position the sensor carefully to capture most rotation of the desired axis.
+
+```python
+from pyberryimu.client import BerryIMUClient
+from pyberryimu.calibration.standard import StandardCalibration
+
+sc = StandardCalibration(verbose=True)
+c = BerryIMUClient(bus=1)
+sc.calibrate_gyroscope(c)
+c.calibration_object = sc
+```
+
+#### Magnetometer
+
+Calibration of magnetometer is not implemented yet.
+
+#### Pressure and Temperature
+
+The BMP180 chip with the pressure and temperature sensors comes with a factory calibration stored on the
+chip and is retrieved on the initialisation of a `BerryIMUClient`
 
 ## Documentation
 

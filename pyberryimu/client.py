@@ -64,6 +64,9 @@ class BerryIMUClient(object):
     * 'data_rate' [3.125, 6.25, 12.5, 25, <50>, 100]
     * 'full_scale': [2, 4, 8, <12>],
     * 'sensor_mode': [<0>, 1, -1]
+    * 'lowpower_mode': [True, <False>],
+    * 'high_resolution': [<True>, False],
+    * 'enabled_temp': [<True>, False]
 
     Read more about these settings in the
     `LSM9DS0 data sheet <http://ozzmaker.com/wp-content/uploads/2014/12/LSM9DS0.pdf>`_.
@@ -237,13 +240,15 @@ class BerryIMUClient(object):
             'data_rate': setup_dict.get('data_rate', 50),
             'full_scale': setup_dict.get('full_scale', 12),
             'sensor_mode': setup_dict.get('sensor_mode', 0),
+            'lowpower_mode': setup_dict.get('lowpower_mode', False),
+            'high_resolution': setup_dict.get('high_resolution', True)
         }
 
     def _init_magnetometer(self):
         """Initialize the magnetometer according to the settings document sent in."""
         reg5_value = (
             ('1' if self._mag_setup.get('enabled_temp') else '0') +
-            '11' +  # Magnetic resolution selection (hardcoded to high resolution!)
+            ('11' if self._mag_setup.get('high_resolution') else '00') +
             LSM9DS0.get_magnetometer_data_rate_bits(self._mag_setup.get('data_rate')) +
             '00'  # Latch interrupts disabled right.
         )
@@ -260,7 +265,7 @@ class BerryIMUClient(object):
             '00' +  # Accelerometer high-pass filter disabled.
             '0' +  # Filtered acceleration data selection bypassed.
             '00' +  # Unused bits
-            '0' +  # Magnetic data low-power mode disabled.
+            ('1' if self._mag_setup.get('lowpower_mode') else '0') +
             LSM9DS0.get_magnetometer_sensor_mode_bits(self._mag_setup.get('sensor_mode'))
         )
         self._write(LSM9DS0.MAG_ADDRESS, LSM9DS0.CTRL_REG7_XM, int(reg7_value, 2))

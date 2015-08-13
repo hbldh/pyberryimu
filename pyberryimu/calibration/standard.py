@@ -34,10 +34,12 @@ from pyberryimu.calibration.base import BerryIMUCalibration
 class StandardCalibration(BerryIMUCalibration):
     """The Standard Calibration object for the PyBerryIMU."""
 
-    # 45 RPM as radians per second.
-    RECORD_PLAYER_45_RPM = (45 / 60) * 2 * np.pi
-    # 33 & 1/3 RPM as radians per second.
-    RECORD_PLAYER_33_3_RPM = ((33 + (1 / 3)) / 60) * 2 * np.pi
+    # 45 RPM
+    RECORD_PLAYER_45_RPM_IN_DPS = 45. * 6
+    RECORD_PLAYER_45_RPM_IN_RADIANS = (45 / 60) * 2 * np.pi
+    # 33 & 1/3 RPM
+    RECORD_PLAYER_33_3_RPM_IN_DPS = (33. + 1./3) * 6
+    RECORD_PLAYER_33_3_RPM_IN_RADIANS = ((33 + (1 / 3)) / 60) * 2 * np.pi
 
     def __init__(self, verbose=False):
         """Constructor for StandardCalibration"""
@@ -53,6 +55,10 @@ class StandardCalibration(BerryIMUCalibration):
         self.acc_scale_factor_matrix = None
 
         # Gyroscope calibration parameters.
+        self._gyro_zero_g = None
+        self._gyro_sensitivity = None
+        self._gyro_calibration_points = None
+
         self.gyro_bias_vector = None
         self.gyro_scale_factor_vector = None
 
@@ -194,7 +200,7 @@ class StandardCalibration(BerryIMUCalibration):
 
         self.berryimu_settings = client.get_settings()
         points = self._do_six_point_one_g_calibration(client)
-        points += self._add_additional_points(client)
+        points += self._add_additional_accelerometer_points(client)
         self._acc_calibration_points = np.array(points)
         self._perform_accelerometer_calibration_optimisation(
             self.acc_to_ratio(self._acc_calibration_points))
@@ -278,7 +284,7 @@ class StandardCalibration(BerryIMUCalibration):
 
         return points
 
-    def _add_additional_points(self, client):
+    def _add_additional_accelerometer_points(self, client):
         """Add more calibration points.
 
         Six calibration points have already been recorded in the six direction zero G/sensitivity
@@ -429,7 +435,7 @@ class StandardCalibration(BerryIMUCalibration):
 
     # Gyroscope calibration methods
 
-    def calibrate_gyroscope(self, client, radians_per_sec=None):
+    def calibrate_gyroscope(self, client, reference_rotation=None):
         """Linear Regression model fitting for SI unit conversion of gyroscope data.
 
         Requires a plane surface rotating with a fixed and known speed
@@ -443,16 +449,16 @@ class StandardCalibration(BerryIMUCalibration):
 
         :param client: The BerryIMU communication client.
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
-        :param radians_per_sec: Rotation speed of the calibration plane.
-        :type radians_per_sec: float
+        :param reference_rotation: Rotation speed of the calibration plane.
+        :type reference_rotation: float
 
         """
-        if radians_per_sec is None:
-            raise PyBerryIMUError("A fixed rotation value in radians per seconds "
+        if reference_rotation is None:
+            raise PyBerryIMUError("A rotation value in either radians or degrees per second"
                                   "must be given. See docstring.")
 
         points = []
-        gyro_zero = np.zeros((3, ), 'float')
+        self._gyro_zero_g = np.zeros((3, ), 'float')
 
         gyro_scale = np.zeros((3, ), 'float')
         gyro_bias = np.zeros((3, ), 'float')
@@ -461,12 +467,12 @@ class StandardCalibration(BerryIMUCalibration):
         def _wait_for_compliance():
             keep_waiting = 4
             while keep_waiting > 0:
-                g = np.array(client.read_gyroscope()) - gyro_zero
+                g = np.array(client.read_gyroscope()) - self._gyro_zero_g
                 print(g)
                 norm_g = np.linalg.norm(g)
                 norm_diff = np.abs(np.abs(g[index]) - norm_g) / norm_g
 
-                if norm_diff < 0.01 and cmp(g[index], 0) == side:
+                if norm_diff < 1e-3 and cmp(g[index], 0) == side:
                     keep_waiting -= 1
                 else:
                     keep_waiting = 4
@@ -478,7 +484,7 @@ class StandardCalibration(BerryIMUCalibration):
         t = time.time()
         while (time.time() - t) < 5:
             gyro_values.append(client.read_gyroscope())
-        gyro_zero = np.mean(gyro_values, axis=0)
+        self._gyro_zero_g = np.mean(gyro_values, axis=0)
 
         axes_names = ['x', 'y', 'z']
         for index in six.moves.range(3):
@@ -498,14 +504,46 @@ class StandardCalibration(BerryIMUCalibration):
                     gyro_values.append(client.read_gyroscope())
 
                 points.append(np.mean(gyro_values, axis=0).tolist())
-                this_axis_points.append(self.acc_to_ratio(points[-1][index]))
+                this_axis_points.append(points[-1][index])
+                gyro_scale[index], gyro_bias[index] = self._calibrate_one_axis_of_gyroscope(
+                    reference_rotation,  min(this_axis_points), self._gyro_zero_g[index], max(this_axis_points))
 
-                x = [min(this_axis_points), gyro_zero[index], max(this_axis_points)]
-                y = [-radians_per_sec, 0, radians_per_sec]
-                gyro_scale[index], gyro_bias[index] = np.polyfit(x, y, 1)
-
+        self._gyro_calibration_points = points
         self.gyro_bias_vector = gyro_bias
         self.gyro_scale_factor_vector = gyro_scale
+
+    def calibrate_gyroscope_with_stored_points(self, zero_point, points, reference_rotation=None):
+        """Perform calibration of gyroscope with stored points.
+
+        :param zero_point: Measurement when no movement is present.
+        :type zero_point: :py:class:`numpy.ndarray`
+        :param points: Calibration points recorded earlier.
+        :type points: :py:class:`numpy.ndarray`
+        :param reference_rotation: Rotation speed of the calibration plane.
+        :type reference_rotation: float
+
+        """
+        if reference_rotation is None:
+            raise PyBerryIMUError("A rotation value in either radians or degrees per second"
+                                  "must be given. See docstring.")
+
+        self._gyro_zero_g = np.array(zero_point)
+        self.gyro_scale_factor_vector = np.zeros((3,), 'float')
+        self.gyro_bias_vector = np.zeros((3,), 'float')
+
+        for index in six.moves.range(3):
+            this_axis_points = []
+            for side in [0, 1]:
+                this_axis_points.append(points[index * 2 + side, index])
+            self.gyro_scale_factor_vector[index], self.gyro_bias_vector[index] = self._calibrate_one_axis_of_gyroscope(
+                reference_rotation, min(this_axis_points), self._gyro_zero_g[index], max(this_axis_points))
+
+    def _calibrate_one_axis_of_gyroscope(self, dps_reference, neg_val, zero, pos_val):
+        x = [neg_val, zero, pos_val]
+        y = [-dps_reference, 0, dps_reference]
+        return np.polyfit(x, y, 1)
+
+    # Magnetometer calibration methods
 
     def calibrate_magnetometer(self, client, **kwargs):
         """Calibrate Magnetometer. Right now only data sheet values are used.
