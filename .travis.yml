@@ -19,4 +19,5 @@ addons:
       - libffi-dev
 install:
   - "pip install -r requirements.txt"
-script: nosetests tests
+  - "pip install coverage"
+script: nosetests tests --with-coverage --cover-package=pyberryimu
