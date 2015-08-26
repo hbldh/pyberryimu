@@ -123,7 +123,7 @@ class StandardCalibration(BerryIMUCalibration):
                 'scale_factor': self.acc_scale_factor_matrix.flatten().tolist(),
                 'bias': self.acc_bias_vector.tolist()
             },
-            'gyro': {
+            'gyroscope': {
                 'scale_factor': self.gyro_scale_factor_vector.tolist(),
                 'bias': self.gyro_bias_vector.tolist(),
             },
