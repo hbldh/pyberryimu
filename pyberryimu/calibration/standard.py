@@ -552,11 +552,11 @@ class StandardCalibration(BerryIMUCalibration):
         :type client: :py:class:`pyberryimu.client.BerryIMUClient`
 
         """
-        self.set_datasheet_values_for_magnetometer(client)
+        self.set_datasheet_values_for_magnetometer(client.get_settings())
 
     # Data sheet values setters
 
-    def set_datasheet_values_for_accelerometer(self, client):
+    def set_datasheet_values_for_accelerometer(self, client_settings):
         """Sets data sheet values for transforming BerryIMU accelerometer data to SI Units."""
         self.acc_bias_vector = np.zeros((3, ), 'float')
         self.acc_scale_factor_matrix = np.eye(3) * {
@@ -565,18 +565,18 @@ class StandardCalibration(BerryIMUCalibration):
             6: 0.183 / 1000.,
             8: 0.244 / 1000.,
             16: 0.732 / 1000.
-        }.get(client.get_settings().get('accelerometer').get('full_scale'))
+        }.get(client_settings.get('accelerometer').get('full_scale'))
 
-    def set_datasheet_values_for_gyroscope(self, client):
+    def set_datasheet_values_for_gyroscope(self, client_settings):
         """Sets data sheet values for transforming BerryIMU gyroscope data to SI Units."""
         self.gyro_bias_vector = np.zeros((3, ), 'float')
         self.gyro_scale_factor_vector = np.ones((3, ), 'float') * {
             245: 8.75 / 1000.,
             500: 17.50 / 1000.,
             2000: 70 / 1000.,
-        }.get(client.get_settings().get('gyroscope').get('full_scale'))
+        }.get(client_settings.get('gyroscope').get('full_scale'))
 
-    def set_datasheet_values_for_magnetometer(self, client):
+    def set_datasheet_values_for_magnetometer(self, client_settings):
         """Sets data sheet values for transforming BerryIMU magnetometer data to SI Units."""
         self.mag_bias_vector = np.zeros((3, ), 'float')
         self.mag_scale_factor_vector = np.ones((3, ), 'float') * {
@@ -584,7 +584,7 @@ class StandardCalibration(BerryIMUCalibration):
             4: 0.16 / 1000.,
             8: 0.32 / 1000.,
             12: 0.48 / 1000.
-        }.get(client.get_settings().get('magnetometer').get('full_scale'))
+        }.get(client_settings.get('magnetometer').get('full_scale'))
 
     def transform_accelerometer_values(self, acc_values):
         # Normalize and then apply the calibration scale matrix and bias.
