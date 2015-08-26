@@ -69,6 +69,13 @@ class TestAccelerationStandardCalibration(object):
         sc.calibrate_accelerometer_with_stored_points(self.test_points_2)
         np.testing.assert_almost_equal(sc._acc_calibration_errors[-1], 0.0, 2)
 
+    def test_set_datasheet_values(self):
+        sc = StandardCalibration(verbose=True)
+        client, smbus, mockbus = create_device()
+        client.open()
+        client.bus._read = mockbus._written
+        sc.set_datasheet_values_for_accelerometer(client.get_settings())
+        assert np.linalg.norm(sc.acc_scale_factor_matrix - np.eye(3)) > 0.0
 
 class TestGyroscopeStandardCalibration(object):
     """Nose Test Suite for Standard Calibration of Accelerometer."""
@@ -143,7 +150,7 @@ class TestGyroscopeStandardCalibration(object):
         client.bus._read = mockbus._written
         sc.calibrate_gyroscope_with_stored_points(
             self.points_2_zero, self.test_points_2, sc.RECORD_PLAYER_33_3_RPM_IN_DPS)
-        sc2.set_datasheet_values_for_gyroscope(client)
+        sc2.set_datasheet_values_for_gyroscope(client.get_settings())
 
         def _internal_test_function(untransformed_g, reference, tolerance):
             np.testing.assert_allclose(sc.transform_gyroscope_values(untransformed_g), reference, atol=tolerance)
@@ -165,7 +172,7 @@ class TestGyroscopeStandardCalibration(object):
         client.bus._read = mockbus._written
         sc.calibrate_gyroscope_with_stored_points(
             self.points_2_zero, self.test_points_2, sc.RECORD_PLAYER_33_3_RPM_IN_DPS)
-        sc2.set_datasheet_values_for_gyroscope(client)
+        sc2.set_datasheet_values_for_gyroscope(client.get_settings())
 
         def _internal_test_function(untransformed_g, tolerance):
             np.testing.assert_allclose(sc.transform_gyroscope_values(untransformed_g),
@@ -178,3 +185,4 @@ class TestGyroscopeStandardCalibration(object):
                 ref = np.zeros((3,), 'float')
                 ref[index] = sc.RECORD_PLAYER_33_3_RPM_IN_DPS * side
                 yield _internal_test_function, self.test_points_2[k, :], 15.0
+

@@ -98,9 +98,9 @@ from pyberryimu.calibration.standard import StandardCalibration
 sc = StandardCalibration.load()
 c = BerryIMUClient(bus=1)
 c.open()
-sc.set_datasheet_values_for_accelerometer(c)
-sc.set_datasheet_values_for_gyroscope(c)
-sc.set_datasheet_values_for_magnetometer(c)
+sc.set_datasheet_values_for_accelerometer(c.get_settings())
+sc.set_datasheet_values_for_gyroscope(c.get_settings())
+sc.set_datasheet_values_for_magnetometer(c.get_settings())
 c.calibration_object = sc
 ```
 
