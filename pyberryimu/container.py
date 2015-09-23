@@ -28,12 +28,12 @@ import numpy as np
 from pyberryimu import version
 
 
-class BerryIMUDataContainer(object):
+class IMUDataContainer(object):
 
     def __init__(self, start_time, client_settings, calibration_parameters=None):
 
         self.recording_name = None
-        self.pyberryimu_version = version
+        self.version = {'pyberryimu': version}
 
         self.start_time = start_time
         self.client_settings = client_settings
@@ -110,6 +110,7 @@ class BerryIMUDataContainer(object):
     def to_json(self):
         return {
             'name': self.recording_name,
+            'version': self.version,
             'recorded': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
             'client_settings': self.client_settings,
             'calibration_parameters': self.calibration_parameters,
@@ -128,7 +129,9 @@ class BerryIMUDataContainer(object):
         out = cls(datetime.datetime.strptime(doc.get('recorded'), '%Y-%m-%d %H:%M:%S'),
             doc.get('client_settings'), doc.get('calibration_parameters'))
         out.recording_name = doc.get('name')
-        out.pyberryimu_version = doc.get('pyberryimu_version', version)
+        out.version = doc.get('version', version)
+        if out.version.get('pyberryimu') is None:
+            out.version['pyberryimu'] = version
 
         out.timestamps = doc.get('data', {}).get('timestamps')
         out.accelerometer = doc.get('data', {}).get('accelerometer')
