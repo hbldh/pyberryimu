@@ -21,6 +21,7 @@ addons:
 install:
   - "pip install -r requirements.txt"
   - "pip install coverage"
+  - "pip install python-coveralls"
   - "pip install -e ."
 script: nosetests tests --with-coverage --cover-package=pyberryimu
 after_success:

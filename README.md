@@ -4,7 +4,7 @@ I2C communications lib for using [BerryIMU]
 (http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 
 |  Branch       | Build status     | Test Coverage |
-| :------------ | ---------------: | ------------- |
+| :------------ | ---------------: | ------------ |
 | `master`      | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=master)](https://travis-ci.org/hbldh/pyberryimu) | [![Coverage Status](https://coveralls.io/repos/github/hbldh/pyberryimu/badge.svg?branch=master)](https://coveralls.io/github/hbldh/pyberryimu?branch=master) |
 | `develop`     | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=develop)](https://travis-ci.org/hbldh/pyberryimu) | [![Coverage Status](https://coveralls.io/repos/github/hbldh/pyberryimu/badge.svg?branch=develop)](https://coveralls.io/github/hbldh/pyberryimu?branch=develop) |
 
