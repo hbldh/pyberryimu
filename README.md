@@ -3,10 +3,10 @@
 I2C communications lib for using [BerryIMU]
 (http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 
-|  Branch       | Build status     |
-| :------------ | ---------------: |
-| `master`      | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=master)](https://travis-ci.org/hbldh/pyberryimu) |
-| `develop`     | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=develop)](https://travis-ci.org/hbldh/pyberryimu) |
+|  Branch       | Build status     | Test Coverage |
+| :------------ | ---------------: | ------------ |
+| `master`      | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=master)](https://travis-ci.org/hbldh/pyberryimu) | [![Coverage Status](https://coveralls.io/repos/github/hbldh/pyberryimu/badge.svg?branch=master)](https://coveralls.io/github/hbldh/pyberryimu?branch=master) |
+| `develop`     | [![Build Status](https://travis-ci.org/hbldh/pyberryimu.svg?branch=develop)](https://travis-ci.org/hbldh/pyberryimu) | [![Coverage Status](https://coveralls.io/repos/github/hbldh/pyberryimu/badge.svg?branch=develop)](https://coveralls.io/github/hbldh/pyberryimu?branch=develop) |
 
 **This library uses and includes several snippets of code from the 
 [Official BerryIMU repository](http://github.com/mwilliams03/BerryIMU).** 

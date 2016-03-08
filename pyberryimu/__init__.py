@@ -24,6 +24,7 @@ classifiers = [
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
     'Operating System :: POSIX :: Linux',
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
@@ -35,10 +36,11 @@ classifiers = [
 # version.
 _version_major = 0
 _version_minor = 4
-_version_patch = 2
-#_version_extra = 'dev3'
-#_version_extra = 'a1'
+_version_patch = 3
+# _version_extra = 'dev1'
+# _version_extra = 'a1'
 _version_extra = ''  # Uncomment this for full releases
+
 
 # Construct full version string from these.
 _ver = [_version_major, _version_minor, _version_patch]
