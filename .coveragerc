@@ -1,0 +1,9 @@
+[run]
+branch = True
+source = pyberryimu
+include = */pyberryimu/*
+omit =
+	*/python?.?/*
+    */site-packages/nose/*
+    */setup.py
+    pyberryimu/sample/*

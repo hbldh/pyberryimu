@@ -5,6 +5,7 @@ python:
   - 2.7
   - 3.3
   - 3.4
+  - 3.5
 branches:
   only:
     - master
@@ -20,4 +21,7 @@ addons:
 install:
   - "pip install -r requirements.txt"
   - "pip install coverage"
+  - "pip install -e ."
 script: nosetests tests --with-coverage --cover-package=pyberryimu
+after_success:
+  coveralls
