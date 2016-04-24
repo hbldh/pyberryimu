@@ -22,7 +22,9 @@ I2C communications lib for using [BerryIMU]
 
 After the package dependencies above are installed, PyBerryIMU can be installed with pip: 
 
-    pip install https://github.com/hbldh/pyberryimu
+```bash
+pip install git+git://github.com/hbldh/pyberryimu.git
+```
 
 This library uses [smbus-cffi](https://github.com/bivab/smbus-cffi) for communication over i2c.
 
