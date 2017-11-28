@@ -1,7 +1,6 @@
 # PyBerryIMU
 
-I2C communications lib for using [BerryIMU]
-(http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
+I2C communications lib for using [BerryIMU](http://ozzmaker.com/product/berryimu-accelerometer-gyroscope-magnetometer-barometricaltitude-sensor/).
 
 |  Branch       | Build status     | Test Coverage |
 | :------------ | ---------------: | ------------ |
@@ -74,15 +73,13 @@ from pyberryimu.container import BerryIMUDataContainer
 data_container = BerryIMUDataContainer.load(os.path.expanduser('~/pyberryimu_rec_test.json'))
 ```
 
-See the example in [pyberryimu/sample/recorder.py]
-(https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/recorder.py)
+See the example in [pyberryimu/sample/recorder.py](https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/recorder.py)
 
 > Note that the maximum frequency is about 100 Hz for reading from all three IMU sensors 
 > (accelerometer, gyroscope and magnetometer) on a Raspberry Pi 2. When adding 
 > pressure readings it drops to about 10 Hz due to the fact that one has to wait 
 > during pressure and temperature reading.
-> Run max frequency test script [pyberryimu/sample/max_freq_test.py]
-> (https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/max_freq_test.py) to
+> Run max frequency test script [pyberryimu/sample/max_freq_test.py](https://github.com/hbldh/pyberryimu/blob/master/pyberryimu/sample/max_freq_test.py) to
 > get a more complete picture of maximal frequencies.
 
 ### Calibration
@@ -114,8 +111,7 @@ Calibration of accelerometer is performed using the method described in
 [Frosio, I.; Pedersini, F.; Alberto Borghese, N., 
 "Autocalibration of MEMS Accelerometers," 
 Instrumentation and Measurement, IEEE Transactions on , 
-vol.58, no.6, pp.2034,2041, June 2009]
-(http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4655611&isnumber=4919430).
+vol.58, no.6, pp.2034,2041, June 2009](http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4655611&isnumber=4919430).
 
 First it prompts the user to position the BerryIMU such that Earth's gravity acts on 
 only one of the axes at a time, in both directions. This six point calibration gives a
